@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getLeadById } from "@/lib/demo-data";
+import { getLeadDetailById } from "@/lib/get-lead-detail";
 
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
@@ -39,61 +39,14 @@ export async function GET(
   const { id } = await params;
 
   try {
-    if (!hasDatabase()) {
-      const lead = getLeadById(id);
-      if (!lead) {
-        return NextResponse.json(
-          { error: { code: "LEAD_NOT_FOUND", message: "Lead not found." } },
-          { status: 404 },
-        );
-      }
-      return NextResponse.json({ data: lead });
-    }
-
-    const lead = await prisma.lead.findFirst({
-      where: { id, deletedAt: null },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        email: true,
-        source: true,
-        status: true,
-        score: true,
-        budgetMin: true,
-        budgetMax: true,
-        preferredUnit: true,
-        preferredView: true,
-        urgency: true,
-        language: true,
-        updatedAt: true,
-      },
-    });
-
+    const lead = await getLeadDetailById(id);
     if (!lead) {
       return NextResponse.json(
         { error: { code: "LEAD_NOT_FOUND", message: "Lead not found." } },
         { status: 404 },
       );
     }
-
-    return NextResponse.json({
-      data: {
-        id: lead.id,
-        name: lead.name,
-        phone: lead.phone ?? undefined,
-        email: lead.email ?? undefined,
-        source: lead.source,
-        status: lead.status,
-        score: lead.score,
-        budgetLabel: budgetLabel(lead.budgetMin, lead.budgetMax),
-        preferredUnit: lead.preferredUnit ?? undefined,
-        preferredView: lead.preferredView ?? undefined,
-        urgency: lead.urgency,
-        language: lead.language,
-        updatedLabel: "Recently",
-      },
-    });
+    return NextResponse.json({ data: lead });
   } catch {
     return NextResponse.json(
       { error: { code: "LEAD_GET_FAILED", message: "Unable to load lead." } },
@@ -203,15 +156,5 @@ export async function DELETE(
       { status: 500 },
     );
   }
-}
-
-function budgetLabel(min?: bigint | null, max?: bigint | null) {
-  if (!min && !max) return "PKR —";
-  const toCr = (n: bigint) => Number(n) / 10_000_000;
-  const minCr = min ? toCr(min) : undefined;
-  const maxCr = max ? toCr(max) : undefined;
-  if (minCr != null && maxCr != null) return `PKR ${minCr.toFixed(0)}–${maxCr.toFixed(0)}Cr`;
-  if (maxCr != null) return `Up to PKR ${maxCr.toFixed(0)}Cr`;
-  return `From PKR ${minCr?.toFixed(0)}Cr`;
 }
 

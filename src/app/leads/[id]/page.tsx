@@ -1,4 +1,5 @@
 import type { DemoLead } from "@/lib/demo-data";
+import { getLeadDetailById } from "@/lib/get-lead-detail";
 
 export default async function LeadDetailPage({
   params,
@@ -6,14 +7,7 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const res = await fetch(`/api/leads/${id}`, { cache: "no-store" });
-  const json: unknown = res.ok ? await res.json() : null;
-  const data =
-    json && typeof json === "object" && "data" in json
-      ? (json as { data?: unknown }).data
-      : null;
-  const lead: DemoLead | null = isDemoLead(data) ? data : null;
-
+  const lead: DemoLead | null = await getLeadDetailById(id);
   if (!lead) {
     return (
       <div className="px-5 sm:px-8 py-8">
@@ -156,18 +150,3 @@ export default async function LeadDetailPage({
     </div>
   );
 }
-
-function isDemoLead(value: unknown): value is DemoLead {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.id === "string" &&
-    typeof v.name === "string" &&
-    typeof v.source === "string" &&
-    typeof v.status === "string" &&
-    typeof v.score === "number" &&
-    typeof v.budgetLabel === "string" &&
-    typeof v.updatedLabel === "string"
-  );
-}
-

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { LeadStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { demoLeads, type DemoLead } from "@/lib/demo-data";
-import { LeadStatus, Prisma } from "@prisma/client";
+
+/** Allow longer cold starts when connecting to remote Postgres from serverless (e.g. Vercel). */
+export const maxDuration = 30;
 
 const createLeadSchema = z.object({
   name: z.string().min(1),
@@ -184,7 +187,37 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ data: { id: lead.id } }, { status: 201 });
-  } catch {
+  } catch (e) {
+    console.error("POST /api/leads", e);
+
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === "P2021") {
+        return NextResponse.json(
+          {
+            error: {
+              code: "TABLE_MISSING",
+              message:
+                "Database tables are missing. Run: npx prisma migrate deploy (or prisma db push) with your DATABASE_URL.",
+            },
+          },
+          { status: 503 },
+        );
+      }
+    }
+
+    if (e instanceof Prisma.PrismaClientInitializationError) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "DB_UNREACHABLE",
+            message:
+              "Cannot reach the database. Check DATABASE_URL and that Postgres is running.",
+          },
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
       { error: { code: "LEAD_CREATE_FAILED", message: "Unable to create lead." } },
       { status: 500 },

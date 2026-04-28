@@ -44,12 +44,12 @@ export default async function LeadsPage() {
               Your pipeline registry — filter, review, and prioritise outreach.
             </p>
           </div>
-          <button
-            type="button"
-            className="rounded-lg px-5 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow"
+          <Link
+            href="/leads/new"
+            className="rounded-lg px-5 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow inline-block text-center"
           >
             Register Prospect
-          </button>
+          </Link>
         </div>
 
         <div className="mt-8 rounded-xl border border-light-grey bg-white shadow-card overflow-hidden">

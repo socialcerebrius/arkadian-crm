@@ -116,7 +116,7 @@ export default async function Home() {
           <div className="flex items-center gap-3">
             <MobileNav />
             <Link
-              href="/leads"
+              href="/leads/new"
               className="rounded px-5 py-3 text-xs font-semibold tracking-[0.2em] uppercase text-white bg-[linear-gradient(135deg,#0A1628,#1a2c4e)] hover:shadow-[0_4px_15px_rgba(10,22,40,0.30)] transition-shadow"
             >
               Register Prospect
