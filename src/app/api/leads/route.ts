@@ -1,0 +1,204 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { demoLeads, type DemoLead } from "@/lib/demo-data";
+import { LeadStatus, Prisma } from "@prisma/client";
+
+const createLeadSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  source: z.enum([
+    "website_voice",
+    "website_form",
+    "website_game",
+    "phone",
+    "referral",
+    "broker",
+    "walk_in",
+    "social_media",
+  ]),
+  budgetMin: z.number().int().nonnegative().optional(),
+  budgetMax: z.number().int().nonnegative().optional(),
+  preferredUnit: z
+    .enum(["two_bed", "three_bed", "three_bed_large", "four_bed_duplex", "penthouse"])
+    .optional(),
+  preferredView: z.enum(["sea", "golf", "city", "dual"]).optional(),
+  urgency: z.enum(["low", "medium", "high", "immediate"]).optional(),
+});
+
+function hasDatabase() {
+  return Boolean(process.env.DATABASE_URL);
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+
+    const statusParam = searchParams.get("status");
+    const status: LeadStatus | undefined =
+      statusParam && (Object.values(LeadStatus) as string[]).includes(statusParam)
+        ? (statusParam as LeadStatus)
+        : undefined;
+    const search = searchParams.get("search") || undefined;
+    const scoreMin = searchParams.get("scoreMin");
+    const scoreMax = searchParams.get("scoreMax");
+
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+    const limit = Math.min(50, Math.max(1, Number(searchParams.get("limit") ?? 20)));
+    const skip = (page - 1) * limit;
+
+    if (!hasDatabase()) {
+      const filtered = demoLeads.filter((l) => {
+        if (status && l.status !== status) return false;
+        if (search && !l.name.toLowerCase().includes(search.toLowerCase())) return false;
+        const min = scoreMin ? Number(scoreMin) : undefined;
+        const max = scoreMax ? Number(scoreMax) : undefined;
+        if (min != null && l.score < min) return false;
+        if (max != null && l.score > max) return false;
+        return true;
+      });
+
+      return NextResponse.json({
+        data: filtered.slice(skip, skip + limit) satisfies DemoLead[],
+        meta: { total: filtered.length, page, limit },
+      });
+    }
+
+    const where: Prisma.LeadWhereInput = {
+      deletedAt: null,
+    };
+
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (scoreMin || scoreMax) {
+      where.score = {
+        gte: scoreMin ? Number(scoreMin) : undefined,
+        lte: scoreMax ? Number(scoreMax) : undefined,
+      };
+    }
+
+    const [total, leads] = await Promise.all([
+      prisma.lead.count({ where }),
+      prisma.lead.findMany({
+        where,
+        orderBy: [{ score: "desc" }, { createdAt: "desc" }],
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          source: true,
+          status: true,
+          score: true,
+          budgetMin: true,
+          budgetMax: true,
+          preferredUnit: true,
+          preferredView: true,
+          urgency: true,
+          language: true,
+          updatedAt: true,
+        },
+      }),
+    ]);
+
+    return NextResponse.json({
+      data: leads.map((l) => ({
+        id: l.id,
+        name: l.name,
+        phone: l.phone ?? undefined,
+        email: l.email ?? undefined,
+        source: l.source,
+        status: l.status,
+        score: l.score,
+        budgetLabel: budgetLabel(l.budgetMin, l.budgetMax),
+        preferredUnit: l.preferredUnit ?? undefined,
+        preferredView: l.preferredView ?? undefined,
+        urgency: l.urgency,
+        language: l.language,
+        updatedLabel: "Recently",
+      })),
+      meta: { total, page, limit },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: { code: "LEADS_LIST_FAILED", message: "Unable to load leads." } },
+      { status: 500 },
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    if (!hasDatabase()) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "DATABASE_NOT_CONFIGURED",
+            message: "DATABASE_URL is not configured for write operations.",
+          },
+        },
+        { status: 501 },
+      );
+    }
+
+    const json = await req.json();
+    const parsed = createLeadSchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid input.",
+            details: parsed.error.flatten(),
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    const body = parsed.data;
+
+    const lead = await prisma.lead.create({
+      data: {
+        name: body.name,
+        phone: body.phone ?? null,
+        email: body.email ?? null,
+        source: body.source,
+        status: "new",
+        budgetMin: body.budgetMin != null ? BigInt(body.budgetMin) : null,
+        budgetMax: body.budgetMax != null ? BigInt(body.budgetMax) : null,
+        preferredUnit: body.preferredUnit ?? null,
+        preferredView: body.preferredView ?? null,
+        urgency: body.urgency ?? "medium",
+        language: "en",
+      },
+    });
+
+    return NextResponse.json({ data: { id: lead.id } }, { status: 201 });
+  } catch {
+    return NextResponse.json(
+      { error: { code: "LEAD_CREATE_FAILED", message: "Unable to create lead." } },
+      { status: 500 },
+    );
+  }
+}
+
+function budgetLabel(min?: bigint | null, max?: bigint | null) {
+  if (!min && !max) return "PKR —";
+  const toCr = (n: bigint) => Number(n) / 10_000_000;
+  const minCr = min ? toCr(min) : undefined;
+  const maxCr = max ? toCr(max) : undefined;
+  if (minCr != null && maxCr != null) return `PKR ${minCr.toFixed(0)}–${maxCr.toFixed(0)}Cr`;
+  if (maxCr != null) return `Up to PKR ${maxCr.toFixed(0)}Cr`;
+  return `From PKR ${minCr?.toFixed(0)}Cr`;
+}
+

@@ -1,0 +1,71 @@
+import { Droppable, Draggable } from "@hello-pangea/dnd";
+import type { PipelineLead, PipelineStage } from "./types";
+import { LeadCard } from "./LeadCard";
+
+export function KanbanColumn({
+  stage,
+  title,
+  topBorderClass,
+  leads,
+}: {
+  stage: PipelineStage;
+  title: string;
+  topBorderClass: string;
+  leads: PipelineLead[];
+}) {
+  return (
+    <section className="w-[340px] shrink-0 rounded-lg border border-gold/20 bg-white shadow-[0_4px_24px_rgba(10,22,40,0.02)] overflow-hidden flex flex-col">
+      <div
+        className={[
+          "border-t-[3px] px-4 py-3 border-b border-light-grey/70 bg-[#FAFAFA] flex items-center justify-between",
+          topBorderClass,
+        ].join(" ")}
+      >
+        <div className="flex items-center gap-2">
+          <div className="text-xs tracking-[0.2em] uppercase text-medium-grey">
+            {title}
+          </div>
+        </div>
+        <div className="text-xs font-semibold text-navy bg-white border border-light-grey rounded-full px-2 py-0.5">
+          {leads.length}
+        </div>
+      </div>
+
+      <Droppable droppableId={stage}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={[
+              "p-4 flex-1 overflow-y-auto",
+              snapshot.isDraggingOver ? "bg-gold/5" : "",
+            ].join(" ")}
+          >
+            <div className="flex flex-col gap-4">
+              {leads.map((lead, index) => (
+                <Draggable key={lead.id} draggableId={lead.id} index={index}>
+                  {(dragProvided) => (
+                    <div
+                      ref={dragProvided.innerRef}
+                      {...dragProvided.draggableProps}
+                      {...dragProvided.dragHandleProps}
+                    >
+                      <LeadCard lead={lead} />
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+              {leads.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-light-grey p-6 text-center text-sm text-medium-grey">
+                  No active prospects.
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </Droppable>
+    </section>
+  );
+}
+

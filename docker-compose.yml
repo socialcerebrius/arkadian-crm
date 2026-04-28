@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: arkadians-crm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: arkadians
+      POSTGRES_PASSWORD: arkadians
+      POSTGRES_DB: arkadians_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - arkadians_crm_pgdata:/var/lib/postgresql/data
+
+volumes:
+  arkadians_crm_pgdata:
+

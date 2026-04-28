@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadSource {
+  website_voice
+  website_form
+  website_game
+  phone
+  referral
+  broker
+  walk_in
+  social_media
+}
+
+enum LeadStatus {
+  new
+  contacted
+  viewing_booked
+  negotiating
+  closed_won
+  closed_lost
+}
+
+enum UnitType {
+  two_bed
+  three_bed
+  three_bed_large
+  four_bed_duplex
+  penthouse
+}
+
+enum ViewPreference {
+  sea
+  golf
+  city
+  dual
+}
+
+enum Urgency {
+  low
+  medium
+  high
+  immediate
+}
+
+enum CallDirection {
+  inbound
+  outbound
+}
+
+enum Sentiment {
+  positive
+  neutral
+  negative
+}
+
+enum ActivityType {
+  task
+  call
+  email
+  whatsapp
+  viewing
+  meeting
+  note
+  follow_up
+}
+
+enum ActivityStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum Priority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum UserRole {
+  admin
+  manager
+  sales_rep
+  viewer
+}
+
+enum UserStatus {
+  active
+  inactive
+  suspended
+}
+
+enum AIOutputType {
+  summary
+  score
+  follow_up_whatsapp
+  follow_up_email
+  recommendation
+  call_analysis
+}
+
+enum Lifestyle {
+  family
+  professional
+  investor
+  retiree
+  luxury_seeker
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         UserRole
+  avatarUrl    String?    @map("avatar_url")
+  status       UserStatus @default(active)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  leads      Lead[]
+  activities Activity[]
+
+  @@map("users")
+}
+
+model Lead {
+  id             String          @id @default(uuid())
+  name           String
+  phone          String?
+  email          String?
+  source         LeadSource
+  status         LeadStatus      @default(new)
+  budgetMin      BigInt?         @map("budget_min")
+  budgetMax      BigInt?         @map("budget_max")
+  preferredUnit  UnitType?       @map("preferred_unit")
+  preferredView  ViewPreference? @map("preferred_view")
+  preferredTower String?         @map("preferred_tower") @db.VarChar(10)
+  urgency        Urgency         @default(medium)
+  language       String          @default("en") @db.VarChar(10)
+  score          Int             @default(0)
+  notes          String?
+  lostReason     String?         @map("lost_reason")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+
+  ownerId String? @map("owner_id")
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  calls        Call[]
+  activities   Activity[]
+  gameSessions GameSession[]
+  aiOutputs    AIOutput[]
+
+  @@index([status])
+  @@index([score(sort: Desc)])
+  @@index([ownerId])
+  @@index([createdAt(sort: Desc)])
+  @@map("leads")
+}
+
+model Call {
+  id              String        @id @default(uuid())
+  vapiCallId      String?       @unique @map("vapi_call_id")
+  direction       CallDirection @default(inbound)
+  transcript      String?
+  summary         String?
+  sentiment       Sentiment?
+  durationSeconds Int?          @map("duration_seconds")
+  recordingUrl    String?       @map("recording_url")
+  callerPhone     String?       @map("caller_phone")
+  metadata        Json          @default("{}")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  leadId String @map("lead_id")
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt(sort: Desc)])
+  @@map("calls")
+}
+
+model Activity {
+  id          String         @id @default(uuid())
+  type        ActivityType
+  title       String
+  notes       String?
+  dueAt       DateTime?      @map("due_at")
+  completedAt DateTime?      @map("completed_at")
+  status      ActivityStatus @default(pending)
+  priority    Priority       @default(medium)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  leadId String @map("lead_id")
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, dueAt])
+  @@index([userId, dueAt])
+  @@map("activities")
+}
+
+model GameSession {
+  id                String         @id @default(uuid())
+  visitorName       String?        @map("visitor_name")
+  visitorPhone      String?        @map("visitor_phone")
+  visitorEmail      String?        @map("visitor_email")
+  lifestyle         Lifestyle?
+  unitType          UnitType?      @map("unit_type")
+  viewPreference    ViewPreference? @map("view_preference")
+  budgetRange       String?        @map("budget_range") @db.VarChar(100)
+  amenityPriorities Json           @default("[]") @map("amenity_priorities")
+  aiRecommendation  String?        @map("ai_recommendation")
+  score             Int            @default(0)
+  completed         Boolean        @default(false)
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  leadId String? @map("lead_id")
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@map("game_sessions")
+}
+
+model AIOutput {
+  id            String      @id @default(uuid())
+  type          AIOutputType
+  promptVersion String?     @map("prompt_version") @db.VarChar(50)
+  inputContext  Json?       @map("input_context")
+  output        String
+  model         String      @default("claude-sonnet-4-20250514") @db.VarChar(100)
+  tokensUsed    Int?        @map("tokens_used")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  leadId String @map("lead_id")
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, type, createdAt(sort: Desc)])
+  @@map("ai_outputs")
+}
+
