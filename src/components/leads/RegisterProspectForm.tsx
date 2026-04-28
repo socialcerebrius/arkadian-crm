@@ -32,14 +32,44 @@ const VIEWS: { value: string; label: string }[] = [
   { value: "dual", label: "Sea & golf" },
 ];
 
-const URGENCY: { value: string; label: string }[] = [
-  { value: "medium", label: "Standard" },
-  { value: "low", label: "Exploring" },
-  { value: "high", label: "Active" },
+/** Must match POST /api/leads createLeadSchema (Urgency enum). */
+const URGENCY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
   { value: "immediate", label: "Immediate" },
-];
+] as const;
+
+type UrgencyValue = (typeof URGENCY_OPTIONS)[number]["value"];
 
 const CR_TO_PKR = 10_000_000;
+
+function formatApiError(json: unknown): string {
+  if (!json || typeof json !== "object" || !("error" in json)) {
+    return "Could not create prospect. Check the form and try again.";
+  }
+  const err = (json as { error?: unknown }).error;
+  if (!err || typeof err !== "object") {
+    return "Could not create prospect. Check the form and try again.";
+  }
+  const e = err as { message?: string; details?: unknown };
+  const message = typeof e.message === "string" ? e.message : "Request failed.";
+  const details = e.details;
+  if (!details || typeof details !== "object") return message;
+
+  const d = details as {
+    formErrors?: string[];
+    fieldErrors?: Record<string, string[] | undefined>;
+  };
+  const lines: string[] = [message];
+  for (const fe of d.formErrors ?? []) {
+    if (fe) lines.push(fe);
+  }
+  for (const [field, msgs] of Object.entries(d.fieldErrors ?? {})) {
+    if (msgs?.length) lines.push(`${field}: ${msgs.join(", ")}`);
+  }
+  return lines.join("\n");
+}
 
 export function RegisterProspectForm() {
   const router = useRouter();
@@ -51,7 +81,7 @@ export function RegisterProspectForm() {
   const [budgetMaxCr, setBudgetMaxCr] = useState("");
   const [preferredUnit, setPreferredUnit] = useState("");
   const [preferredView, setPreferredView] = useState("");
-  const [urgency, setUrgency] = useState("medium");
+  const [urgency, setUrgency] = useState<UrgencyValue>("medium");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -74,10 +104,14 @@ export function RegisterProspectForm() {
         return;
       }
 
+      const urgencyPayload: UrgencyValue = URGENCY_OPTIONS.some((o) => o.value === urgency)
+        ? urgency
+        : "medium";
+
       const body: Record<string, unknown> = {
         name: name.trim(),
         source,
-        urgency,
+        urgency: urgencyPayload,
       };
 
       const phoneTrim = phone.trim();
@@ -114,11 +148,7 @@ export function RegisterProspectForm() {
       }
 
       if (!res.ok) {
-        const msg =
-          json && typeof json === "object" && "error" in json
-            ? (json as { error?: { message?: string } }).error?.message
-            : null;
-        setError(msg ?? "Could not create prospect. Check the form and try again.");
+        setError(formatApiError(json));
         setLoading(false);
         return;
       }
@@ -127,8 +157,11 @@ export function RegisterProspectForm() {
         json && typeof json === "object" && "data" in json
           ? (json as { data?: { id?: string } }).data?.id
           : undefined;
-      if (id) router.push(`/leads/${id}`);
-      else router.push("/leads");
+      if (typeof id === "string" && id.length > 0) {
+        router.push(`/leads/${id}`);
+        return;
+      }
+      setError("Prospect was created but no id was returned. Check the prospects list.");
     } catch (err) {
       const failedFetch =
         err instanceof TypeError &&
@@ -149,7 +182,7 @@ export function RegisterProspectForm() {
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="max-w-2xl">
       {error ? (
-        <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy">
+        <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy whitespace-pre-line">
           {error}
         </div>
       ) : null}
@@ -209,9 +242,9 @@ export function RegisterProspectForm() {
           <select
             className={fieldClass}
             value={urgency}
-            onChange={(e) => setUrgency(e.target.value)}
+            onChange={(e) => setUrgency(e.target.value as UrgencyValue)}
           >
-            {URGENCY.map((u) => (
+            {URGENCY_OPTIONS.map((u) => (
               <option key={u.value} value={u.value}>
                 {u.label}
               </option>
