@@ -2,127 +2,261 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/** Only leads with this email domain are removed and re-created on each seed run (idempotent demo data). */
+const SEED_EMAIL_DOMAIN = "seed.arkadians.local";
+
 async function main() {
+  await prisma.lead.deleteMany({
+    where: { email: { endsWith: `@${SEED_EMAIL_DOMAIN}` } },
+  });
+
   const user = await prisma.user.upsert({
     where: { email: "ahmad@arkadians.local" },
-    update: { name: "Ahmad", role: "manager", status: "active" },
+    update: { name: "Ahmad Raza", role: "manager", status: "active" },
     create: {
-      name: "Ahmad",
+      name: "Ahmad Raza",
       email: "ahmad@arkadians.local",
-      passwordHash: "dev-only",
+      passwordHash: "dev-only-not-for-production-auth",
       role: "manager",
       status: "active",
     },
   });
 
-  const [fatima, hassan, sara, , ahmed] = await Promise.all([
-    upsertLead({
-      email: "fatima@client.local",
-      name: "Fatima Syed",
-      score: 92,
-      status: "viewing_booked",
-      source: "website_form",
-      budgetMin: BigInt("30000000"),
-      budgetMax: BigInt("55000000"),
-      preferredUnit: "three_bed",
-      preferredView: "sea",
-      urgency: "high",
-      ownerId: user.id,
-      notes: "Requested payment plan; prefers sea-facing tower.",
-    }),
-    upsertLead({
-      email: "hassan@client.local",
-      name: "Hassan Malik",
-      score: 71,
-      status: "contacted",
-      source: "phone",
-      budgetMin: BigInt("22000000"),
-      budgetMax: BigInt("35000000"),
-      preferredUnit: "two_bed",
-      preferredView: "city",
-      urgency: "medium",
-      ownerId: user.id,
-      notes: "Price sensitivity; wants clarity on instalments.",
-    }),
-    upsertLead({
-      email: "sara@client.local",
-      name: "Sara Khan",
-      score: 88,
-      status: "negotiating",
-      source: "referral",
-      budgetMin: BigInt("45000000"),
-      budgetMax: BigInt("70000000"),
-      preferredUnit: "four_bed_duplex",
-      preferredView: "dual",
-      urgency: "immediate",
-      ownerId: user.id,
-      notes: "Decision window this week; prioritise concierge follow-up.",
-    }),
-    upsertLead({
-      email: "omar@client.local",
-      name: "Omar Raza",
-      score: 64,
-      status: "new",
-      source: "website_game",
-      budgetMin: BigInt("60000000"),
-      budgetMax: BigInt("120000000"),
-      preferredUnit: "penthouse",
-      preferredView: "sea",
-      urgency: "medium",
-      ownerId: user.id,
-      notes: "Game signals penthouse interest; follow up for viewing.",
-    }),
-    upsertLead({
-      email: "ahmed@client.local",
-      name: "Ahmed Khan",
-      score: 95,
-      status: "contacted",
-      source: "website_voice",
-      budgetMin: BigInt("35000000"),
-      budgetMax: BigInt("60000000"),
-      preferredUnit: "three_bed_large",
-      preferredView: "golf",
-      urgency: "high",
-      ownerId: user.id,
-      notes: "High intent; no contact in 3 days.",
-    }),
-  ]);
+  const salesRep = await prisma.user.upsert({
+    where: { email: "sara@arkadians.local" },
+    update: { name: "Sara Malik", role: "sales_rep", status: "active" },
+    create: {
+      name: "Sara Malik",
+      email: "sara@arkadians.local",
+      passwordHash: "dev-only-not-for-production-auth",
+      role: "sales_rep",
+      status: "active",
+    },
+  });
+
+  const leadInsert = await prisma.lead.createMany({
+    data: [
+      {
+        name: "Zara Ali",
+        email: `zara.ali@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 321 400 1001",
+        score: 64,
+        status: "new",
+        source: "referral",
+        budgetMin: BigInt(100_000_000),
+        budgetMax: BigInt(300_000_000),
+        preferredUnit: "two_bed",
+        preferredView: "city",
+        urgency: "low",
+        ownerId: salesRep.id,
+        notes: "Referral from existing resident; early stage.",
+      },
+      {
+        name: "Omar Raza",
+        email: `omar.raza@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 333 222 1100",
+        score: 78,
+        status: "contacted",
+        source: "website_form",
+        budgetMin: BigInt(300_000_000),
+        budgetMax: BigInt(500_000_000),
+        preferredUnit: "three_bed",
+        preferredView: "city",
+        urgency: "medium",
+        ownerId: user.id,
+        notes: "Asked about payment plan and city-facing tiers.",
+      },
+      {
+        name: "Ahmed Khan",
+        email: `ahmed.khan@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 300 123 4567",
+        score: 95,
+        status: "contacted",
+        source: "website_voice",
+        budgetMin: BigInt(800_000_000),
+        budgetMax: BigInt(1_500_000_000),
+        preferredUnit: "penthouse",
+        preferredView: "sea",
+        urgency: "high",
+        ownerId: user.id,
+        notes: "Penthouse focus; schedule private viewing.",
+      },
+      {
+        name: "Hassan Malik",
+        email: `hassan.malik@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 301 555 8899",
+        score: 71,
+        status: "contacted",
+        source: "phone",
+        budgetMin: BigInt(220_000_000),
+        budgetMax: BigInt(350_000_000),
+        preferredUnit: "two_bed",
+        preferredView: "city",
+        urgency: "medium",
+        ownerId: user.id,
+        notes: "Price sensitivity; instalment clarity needed.",
+      },
+      {
+        name: "Fatima Syed",
+        email: `fatima.syed@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 300 987 6543",
+        score: 88,
+        status: "viewing_booked",
+        source: "website_game",
+        budgetMin: BigInt(500_000_000),
+        budgetMax: BigInt(800_000_000),
+        preferredUnit: "four_bed_duplex",
+        preferredView: "dual",
+        urgency: "high",
+        ownerId: salesRep.id,
+        notes: "Sea + dual aspect; payment plan requested twice.",
+      },
+      {
+        name: "Aisha Noor",
+        email: `aisha.noor@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 302 777 1122",
+        score: 72,
+        status: "viewing_booked",
+        source: "walk_in",
+        budgetMin: BigInt(400_000_000),
+        budgetMax: BigInt(600_000_000),
+        preferredUnit: "three_bed_large",
+        preferredView: "golf",
+        urgency: "medium",
+        ownerId: salesRep.id,
+        notes: "Walk-in; prefers golf course outlook.",
+      },
+      {
+        name: "Sara Khan",
+        email: `sara.khan@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 303 888 3344",
+        score: 91,
+        status: "negotiating",
+        source: "referral",
+        budgetMin: BigInt(600_000_000),
+        budgetMax: BigInt(900_000_000),
+        preferredUnit: "four_bed_duplex",
+        preferredView: "dual",
+        urgency: "immediate",
+        ownerId: user.id,
+        notes: "Decision window this week; concierge follow-up.",
+      },
+      {
+        name: "Bilal Farooq",
+        email: `bilal.farooq@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 304 999 5566",
+        score: 84,
+        status: "negotiating",
+        source: "broker",
+        budgetMin: BigInt(550_000_000),
+        budgetMax: BigInt(750_000_000),
+        preferredUnit: "three_bed",
+        preferredView: "sea",
+        urgency: "high",
+        ownerId: salesRep.id,
+        notes: "Broker-introduced; comparing towers.",
+      },
+      {
+        name: "Kamran Siddiqui",
+        email: `kamran.siddiqui@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 305 111 7788",
+        score: 76,
+        status: "closed_won",
+        source: "referral",
+        budgetMin: BigInt(450_000_000),
+        budgetMax: BigInt(500_000_000),
+        preferredUnit: "three_bed_large",
+        preferredView: "sea",
+        urgency: "high",
+        ownerId: user.id,
+        notes: "Signed; handover scheduled.",
+      },
+      {
+        name: "Nadia Sheikh",
+        email: `nadia.sheikh@${SEED_EMAIL_DOMAIN}`,
+        phone: "+92 306 222 9900",
+        score: 42,
+        status: "closed_lost",
+        source: "website_form",
+        budgetMin: BigInt(80_000_000),
+        budgetMax: BigInt(120_000_000),
+        preferredUnit: "two_bed",
+        preferredView: "city",
+        urgency: "low",
+        ownerId: salesRep.id,
+        notes: "Budget misaligned; may revisit next quarter.",
+        lostReason: "Budget",
+      },
+    ],
+  });
+
+  const created = await prisma.lead.findMany({
+    where: { email: { endsWith: `@${SEED_EMAIL_DOMAIN}` } },
+    select: { id: true, email: true, name: true },
+  });
+
+  const byEmail = Object.fromEntries(created.map((l) => [l.email, l])) as Record<
+    string,
+    { id: string; email: string; name: string }
+  >;
+
+  const g = (localPart: string) => byEmail[`${localPart}@${SEED_EMAIL_DOMAIN}`]!;
 
   await prisma.call.createMany({
     data: [
       {
-        leadId: fatima.id,
+        leadId: g("fatima.syed").id,
         direction: "outbound",
         durationSeconds: 222,
         sentiment: "positive",
         summary: "Confirmed interest; requested updated payment plan.",
-        transcript: "Agent: Hello Fatima, thank you for your time.\nCaller: I’d like the payment plan again.\nAgent: Certainly — I’ll send it immediately.",
+        transcript:
+          "Agent: Hello Fatima, thank you for your time.\nCaller: I’d like the payment plan again.\nAgent: Certainly — I’ll send it immediately.",
       },
       {
-        leadId: hassan.id,
+        leadId: g("hassan.malik").id,
         direction: "inbound",
         durationSeconds: 318,
         sentiment: "neutral",
         summary: "Pricing questions; asked about instalment schedule.",
-        transcript: "Caller: Can you confirm the instalment schedule?\nAgent: Yes — let me walk you through it.",
+        transcript:
+          "Caller: Can you confirm the instalment schedule?\nAgent: Yes — let me walk you through it.",
       },
       {
-        leadId: sara.id,
+        leadId: g("sara.khan").id,
         direction: "outbound",
         durationSeconds: 175,
         sentiment: "positive",
         summary: "Negotiation progressed; requested a private viewing slot.",
-        transcript: "Agent: We can reserve a private viewing.\nCaller: Tomorrow evening would be ideal.\nAgent: Consider it arranged.",
+        transcript:
+          "Agent: We can reserve a private viewing.\nCaller: Tomorrow evening would be ideal.\nAgent: Consider it arranged.",
+      },
+      {
+        leadId: g("ahmed.khan").id,
+        direction: "inbound",
+        durationSeconds: 402,
+        sentiment: "positive",
+        summary: "Penthouse options and sea-facing terraces discussed.",
+        transcript:
+          "Caller: I want the best sea-facing layout.\nAgent: I’ll prepare two penthouse briefs for your review.",
+      },
+      {
+        leadId: g("omar.raza").id,
+        direction: "inbound",
+        durationSeconds: 241,
+        sentiment: "neutral",
+        summary: "City view vs sea view trade-offs.",
+        transcript:
+          "Caller: Is city view significantly quieter?\nAgent: I can share decibel and orientation notes.",
       },
     ],
-    skipDuplicates: true,
   });
 
   const now = new Date();
   await prisma.activity.createMany({
     data: [
       {
-        leadId: ahmed.id,
+        leadId: g("ahmed.khan").id,
         userId: user.id,
         type: "follow_up",
         title: "Follow up Ahmed Khan",
@@ -132,8 +266,8 @@ async function main() {
         priority: "urgent",
       },
       {
-        leadId: fatima.id,
-        userId: user.id,
+        leadId: g("fatima.syed").id,
+        userId: salesRep.id,
         type: "email",
         title: "Send payment plan to Fatima Syed",
         notes: "She asked twice; include updated availability.",
@@ -142,7 +276,7 @@ async function main() {
         priority: "high",
       },
       {
-        leadId: sara.id,
+        leadId: g("sara.khan").id,
         userId: user.id,
         type: "viewing",
         title: "Private viewing with Sara Khan",
@@ -151,87 +285,27 @@ async function main() {
         status: "pending",
         priority: "high",
       },
-    ],
-    skipDuplicates: true,
-  });
-
-  return { userId: user.id };
-}
-
-async function upsertLead(input: {
-  email: string;
-  name: string;
-  score: number;
-  status:
-    | "new"
-    | "contacted"
-    | "viewing_booked"
-    | "negotiating"
-    | "closed_won"
-    | "closed_lost";
-  source:
-    | "website_voice"
-    | "website_form"
-    | "website_game"
-    | "phone"
-    | "referral"
-    | "broker"
-    | "walk_in"
-    | "social_media";
-  budgetMin?: bigint;
-  budgetMax?: bigint;
-  preferredUnit?: "two_bed" | "three_bed" | "three_bed_large" | "four_bed_duplex" | "penthouse";
-  preferredView?: "sea" | "golf" | "city" | "dual";
-  urgency?: "low" | "medium" | "high" | "immediate";
-  ownerId: string;
-  notes?: string;
-}) {
-  const existing = await prisma.lead.findFirst({
-    where: { email: input.email, deletedAt: null },
-    select: { id: true },
-  });
-
-  if (existing) {
-    return prisma.lead.update({
-      where: { id: existing.id },
-      data: {
-        name: input.name,
-        score: input.score,
-        status: input.status,
-        source: input.source,
-        budgetMin: input.budgetMin,
-        budgetMax: input.budgetMax,
-        preferredUnit: input.preferredUnit,
-        preferredView: input.preferredView,
-        urgency: input.urgency ?? "medium",
-        ownerId: input.ownerId,
-        notes: input.notes,
+      {
+        leadId: g("zara.ali").id,
+        userId: salesRep.id,
+        type: "task",
+        title: "Qualify Zara Ali — referral intro call",
+        notes: "Understand timeline and financing.",
+        dueAt: new Date(now.getTime() + 48 * 60 * 60 * 1000),
+        status: "pending",
+        priority: "medium",
       },
-    });
-  }
+    ],
+  });
 
-  return prisma.lead.create({
-    data: {
-      name: input.name,
-      email: input.email,
-      score: input.score,
-      status: input.status,
-      source: input.source,
-      budgetMin: input.budgetMin,
-      budgetMax: input.budgetMax,
-      preferredUnit: input.preferredUnit,
-      preferredView: input.preferredView,
-      urgency: input.urgency ?? "medium",
-      ownerId: input.ownerId,
-      notes: input.notes,
-    },
+  console.log("Seed complete.", {
+    demoLeadsInserted: leadInsert.count,
+    leadsInDb: created.length,
+    seedDomain: SEED_EMAIL_DOMAIN,
   });
 }
 
 main()
-  .then((result) => {
-    console.log("Seed complete.", result);
-  })
   .catch((err) => {
     console.error("Seed failed.", err);
     process.exitCode = 1;
@@ -239,4 +313,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

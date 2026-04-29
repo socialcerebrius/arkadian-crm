@@ -45,18 +45,22 @@ Prospect create/update APIs require a reachable Postgres database.
 
 1. Start Postgres:
    - `docker compose up -d postgres`
-2. Run migrations:
-   - `npx prisma migrate deploy`
+2. Run migrations and demo seed:
+   - `npm run db:setup`
+   - (equivalent: `npx prisma migrate deploy` then `npx prisma db seed`)
 3. Start app:
    - `npm run dev`
+
+Demo seed creates **10 prospects** (all pipeline stages), sample **calls**, and **activities**. Re-running the seed **removes and recreates** only rows whose email ends with `@seed.arkadians.local` (see `prisma/seed.ts`).
 
 ### VPS deployment
 
 1. Set `DATABASE_URL` to your VPS/hosted Postgres connection string (not `localhost` unless Postgres is on the same server).
 2. Ensure SSL/query params are correct for your provider (for many managed DBs this includes `?sslmode=require`).
-3. Run schema migrations on the server:
-   - `npx prisma migrate deploy`
-4. Restart the app process.
+3. Run on the server (from the app directory, with `DATABASE_URL` exported in the environment):
+   - `npm run db:setup`
+   - or: `chmod +x scripts/vps-db-setup.sh && ./scripts/vps-db-setup.sh`
+4. Restart the app process (e.g. `pm2 restart all`).
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

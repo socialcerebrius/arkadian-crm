@@ -34,6 +34,31 @@ function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
 }
 
+function filterAndPaginateDemoLeads(
+  status: LeadStatus | undefined,
+  search: string | undefined,
+  scoreMin: string | null,
+  scoreMax: string | null,
+  page: number,
+  limit: number,
+) {
+  const skip = (page - 1) * limit;
+  const filtered = demoLeads.filter((l) => {
+    if (status && l.status !== status) return false;
+    if (search && !l.name.toLowerCase().includes(search.toLowerCase())) return false;
+    const min = scoreMin ? Number(scoreMin) : undefined;
+    const max = scoreMax ? Number(scoreMax) : undefined;
+    if (min != null && l.score < min) return false;
+    if (max != null && l.score > max) return false;
+    return true;
+  });
+
+  return {
+    data: filtered.slice(skip, skip + limit),
+    meta: { total: filtered.length, page, limit },
+  };
+}
+
 function databaseUnreachableMessage() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
@@ -71,19 +96,17 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     if (!hasDatabase()) {
-      const filtered = demoLeads.filter((l) => {
-        if (status && l.status !== status) return false;
-        if (search && !l.name.toLowerCase().includes(search.toLowerCase())) return false;
-        const min = scoreMin ? Number(scoreMin) : undefined;
-        const max = scoreMax ? Number(scoreMax) : undefined;
-        if (min != null && l.score < min) return false;
-        if (max != null && l.score > max) return false;
-        return true;
-      });
-
+      const { data, meta } = filterAndPaginateDemoLeads(
+        status,
+        search,
+        scoreMin,
+        scoreMax,
+        page,
+        limit,
+      );
       return NextResponse.json({
-        data: filtered.slice(skip, skip + limit) satisfies DemoLead[],
-        meta: { total: filtered.length, page, limit },
+        data: data satisfies DemoLead[],
+        meta,
       });
     }
 
@@ -131,6 +154,21 @@ export async function GET(req: NextRequest) {
         },
       }),
     ]);
+
+    if (total === 0) {
+      const { data, meta } = filterAndPaginateDemoLeads(
+        status,
+        search,
+        scoreMin,
+        scoreMax,
+        page,
+        limit,
+      );
+      return NextResponse.json({
+        data: data satisfies DemoLead[],
+        meta,
+      });
+    }
 
     return NextResponse.json({
       data: leads.map((l) => ({
