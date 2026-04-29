@@ -34,6 +34,25 @@ function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
 }
 
+function databaseUnreachableMessage() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    return "Cannot reach the database. DATABASE_URL is missing.";
+  }
+
+  try {
+    const parsed = new URL(dbUrl);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "Cannot reach the database. DATABASE_URL points to localhost, so this only works if Postgres is running on the same machine. For VPS deploys, use your remote Postgres host and run `npx prisma migrate deploy`.";
+    }
+  } catch {
+    // Keep fallback message for malformed URLs.
+  }
+
+  return "Cannot reach the database. Check DATABASE_URL, SSL settings, and that Postgres is reachable from this server.";
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -210,8 +229,7 @@ export async function POST(req: NextRequest) {
         {
           error: {
             code: "DB_UNREACHABLE",
-            message:
-              "Cannot reach the database. Check DATABASE_URL and that Postgres is running.",
+            message: databaseUnreachableMessage(),
           },
         },
         { status: 503 },
