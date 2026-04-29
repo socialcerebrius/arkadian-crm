@@ -85,8 +85,8 @@ export function RegisterProspectForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError(null);
     setLoading(true);
 
@@ -95,12 +95,10 @@ export function RegisterProspectForm() {
       const parsedMax = budgetMaxCr.trim() === "" ? undefined : Number(budgetMaxCr);
       if (parsedMin !== undefined && (Number.isNaN(parsedMin) || parsedMin < 0)) {
         setError("Budget min must be a valid crore amount.");
-        setLoading(false);
         return;
       }
       if (parsedMax !== undefined && (Number.isNaN(parsedMax) || parsedMax < 0)) {
         setError("Budget max must be a valid crore amount.");
-        setLoading(false);
         return;
       }
 
@@ -126,42 +124,31 @@ export function RegisterProspectForm() {
       if (preferredUnit) body.preferredUnit = preferredUnit;
       if (preferredView) body.preferredView = preferredView;
 
-      const apiUrl =
-        typeof window !== "undefined"
-          ? `${window.location.origin}/api/leads`
-          : "/api/leads";
-      const res = await fetch(apiUrl, {
+      console.log("Submitting lead", body);
+
+      const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        credentials: "same-origin",
       });
 
       const json: unknown = await res.json().catch(() => null);
 
-      if (res.status === 501) {
-        setError(
-          "Database is not configured on this deployment (DATABASE_URL). Add Postgres and redeploy to save prospects.",
-        );
-        setLoading(false);
+      if (res.status === 201) {
+        console.log("Lead created", json);
+        const id =
+          json && typeof json === "object" && "data" in json
+            ? (json as { data?: { id?: string } }).data?.id
+            : undefined;
+        if (typeof id === "string" && id.length > 0) {
+          router.push(`/leads/${id}`);
+        } else {
+          setError("Prospect was created but no id was returned. Check the prospects list.");
+        }
         return;
       }
 
-      if (!res.ok) {
-        setError(formatApiError(json));
-        setLoading(false);
-        return;
-      }
-
-      const id =
-        json && typeof json === "object" && "data" in json
-          ? (json as { data?: { id?: string } }).data?.id
-          : undefined;
-      if (typeof id === "string" && id.length > 0) {
-        router.push(`/leads/${id}`);
-        return;
-      }
-      setError("Prospect was created but no id was returned. Check the prospects list.");
+      setError(formatApiError(json));
     } catch (err) {
       const failedFetch =
         err instanceof TypeError &&
@@ -180,7 +167,7 @@ export function RegisterProspectForm() {
     "mt-2 w-full rounded-lg border border-light-grey bg-white px-3 py-2 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-gold/40";
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="max-w-2xl">
+    <form onSubmit={handleSubmit} className="max-w-2xl">
       {error ? (
         <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy whitespace-pre-line">
           {error}
