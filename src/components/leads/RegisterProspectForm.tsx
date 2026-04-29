@@ -85,8 +85,7 @@ export function RegisterProspectForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitProspect() {
     setError(null);
     setLoading(true);
 
@@ -161,6 +160,17 @@ export function RegisterProspectForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void submitProspect();
+  }
+
+  function handleSaveClick(event: React.MouseEvent<HTMLButtonElement>) {
+    console.log("SUBMIT CLICKED");
+    event.preventDefault();
+    void submitProspect();
   }
 
   const fieldClass =
@@ -299,6 +309,7 @@ export function RegisterProspectForm() {
       <div className="mt-8 flex flex-wrap items-center gap-4">
         <button
           type="submit"
+          onClick={handleSaveClick}
           disabled={loading}
           className="rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow disabled:opacity-50"
         >
