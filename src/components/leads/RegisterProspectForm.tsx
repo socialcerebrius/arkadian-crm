@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 const SOURCES: { value: string; label: string }[] = [
   { value: "walk_in", label: "Walk-in" },
@@ -83,10 +83,24 @@ export function RegisterProspectForm() {
   const [preferredView, setPreferredView] = useState("");
   const [urgency, setUrgency] = useState<UrgencyValue>("medium");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const submitInFlightRef = useRef(false);
+  const saveSucceededRef = useRef(false);
 
-  async function executeSave() {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    console.log("SUBMIT CLICKED");
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
+
     setError(null);
+    setSuccess(null);
+    saveSucceededRef.current = false;
+    setRedirecting(false);
     setLoading(true);
 
     try {
@@ -123,8 +137,6 @@ export function RegisterProspectForm() {
       if (preferredUnit) body.preferredUnit = preferredUnit;
       if (preferredView) body.preferredView = preferredView;
 
-      console.log("Submitting lead", body);
-
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,39 +146,42 @@ export function RegisterProspectForm() {
       const json: unknown = await res.json().catch(() => null);
 
       if (res.status === 201) {
-        console.log("Lead created", json);
         const id =
           json && typeof json === "object" && "data" in json
             ? (json as { data?: { id?: string } }).data?.id
             : undefined;
         if (typeof id === "string" && id.length > 0) {
-          router.push(`/leads/${id}`);
+          saveSucceededRef.current = true;
+          setError(null);
+          setSuccess("Prospect saved successfully");
+          setRedirecting(true);
+          setTimeout(() => {
+            router.push(`/leads/${id}`);
+          }, 600);
         } else {
           setError("Prospect was created but no id was returned. Check the prospects list.");
         }
         return;
       }
 
-      setError(formatApiError(json));
+      if (!saveSucceededRef.current) {
+        setError(formatApiError(json));
+      }
     } catch (err) {
-      const failedFetch =
-        err instanceof TypeError &&
-        (err.message === "Failed to fetch" || err.message === "Load failed");
-      setError(
-        failedFetch
-          ? "Could not reach the server. Confirm this site uses HTTPS, the deployment finished successfully, DATABASE_URL is set, and try again (some hosts block requests until the DB or region is healthy)."
-          : "Something went wrong. Please try again.",
-      );
+      if (!saveSucceededRef.current) {
+        const failedFetch =
+          err instanceof TypeError &&
+          (err.message === "Failed to fetch" || err.message === "Load failed");
+        setError(
+          failedFetch
+            ? "Could not reach the server. Confirm this site uses HTTPS, the deployment finished successfully, DATABASE_URL is set, and try again (some hosts block requests until the DB or region is healthy)."
+            : "Something went wrong. Please try again.",
+        );
+      }
     } finally {
+      submitInFlightRef.current = false;
       setLoading(false);
     }
-  }
-
-  /** Synchronous: must cancel native form navigation before any await (no Server Actions, no document POST). */
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-    void executeSave();
   }
 
   const fieldClass =
@@ -175,7 +190,12 @@ export function RegisterProspectForm() {
   return (
     <div className="max-w-2xl">
       <form onSubmit={handleSubmit} className="space-y-0">
-        {error ? (
+        {success ? (
+          <div className="mb-6 rounded-lg border border-gold/50 bg-gold/10 px-4 py-3 text-sm text-navy">
+            {success}
+          </div>
+        ) : null}
+        {error && !success ? (
           <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy whitespace-pre-line">
             {error}
           </div>
@@ -304,19 +324,12 @@ export function RegisterProspectForm() {
         </div>
 
         <div className="mt-8">
-          {/*
-            type="button" so the browser never performs a native form submit (document navigation).
-            Same executeSave as Enter via handleSubmit on <form>.
-          */}
           <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              void executeSave();
-            }}
+            type="submit"
+            disabled={loading || redirecting}
             className="rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow disabled:opacity-50"
           >
-            {loading ? "Saving…" : "Save prospect"}
+            {redirecting ? "Redirecting…" : loading ? "Saving…" : "Save prospect"}
           </button>
         </div>
       </form>
