@@ -4,6 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+/** Optional override e.g. http://144.91.117.236:3001/api/leads — defaults to same-origin /api/leads. */
+function leadsPostUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_LEADS_API_URL;
+  if (typeof fromEnv === "string" && fromEnv.length > 0) return fromEnv;
+  if (typeof window !== "undefined") return `${window.location.origin}/api/leads`;
+  return "/api/leads";
+}
+
 const SOURCES: { value: string; label: string }[] = [
   { value: "walk_in", label: "Walk-in" },
   { value: "phone", label: "Phone" },
@@ -84,13 +92,23 @@ export function RegisterProspectForm() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    console.log("SUBMIT CLICKED");
+  function guardForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     event.stopPropagation();
+    void handleSave();
+  }
+
+  async function handleSave() {
+    console.log("SAVE CLICKED");
+    console.log("Saving...");
 
     setSuccessMsg(null);
     setErrorMsg(null);
+
+    if (!name.trim()) {
+      setErrorMsg("Failed to save prospect: Name is required.");
+      return;
+    }
 
     const parsedMin = budgetMinCr.trim() === "" ? undefined : Number(budgetMinCr);
     const parsedMax = budgetMaxCr.trim() === "" ? undefined : Number(budgetMaxCr);
@@ -107,44 +125,46 @@ export function RegisterProspectForm() {
       ? urgency
       : "medium";
 
-    const body: Record<string, unknown> = {
+    const formData: Record<string, unknown> = {
       name: name.trim(),
       source,
       urgency: urgencyPayload,
     };
 
     const phoneTrim = phone.trim();
-    if (phoneTrim) body.phone = phoneTrim;
+    if (phoneTrim) formData.phone = phoneTrim;
 
     const emailTrim = email.trim();
-    if (emailTrim) body.email = emailTrim;
+    if (emailTrim) formData.email = emailTrim;
 
-    if (parsedMin !== undefined) body.budgetMin = Math.round(parsedMin * CR_TO_PKR);
-    if (parsedMax !== undefined) body.budgetMax = Math.round(parsedMax * CR_TO_PKR);
+    if (parsedMin !== undefined) formData.budgetMin = Math.round(parsedMin * CR_TO_PKR);
+    if (parsedMax !== undefined) formData.budgetMax = Math.round(parsedMax * CR_TO_PKR);
 
-    if (preferredUnit) body.preferredUnit = preferredUnit;
-    if (preferredView) body.preferredView = preferredView;
+    if (preferredUnit) formData.preferredUnit = preferredUnit;
+    if (preferredView) formData.preferredView = preferredView;
 
-    console.log("Submitting lead", body);
+    const url = leadsPostUrl();
+    console.log("Submitting lead", formData, "→", url);
     setSaving(true);
 
     try {
-      const res = await fetch("/api/leads", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(formData),
       });
 
       console.log("POST status", res.status);
 
-      const json: unknown = await res.json().catch(() => null);
+      const data: unknown = await res.json().catch(() => null);
+      console.log("Saved:", data);
 
       if (!res.ok) {
-        setErrorMsg(`Failed to save prospect: ${errorMessageFromJson(json)}`);
+        setErrorMsg(`Failed to save prospect: ${errorMessageFromJson(data)}`);
         return;
       }
 
-      const parsed = json as CreateLeadResponse;
+      const parsed = data as CreateLeadResponse;
       const id = parsed?.data?.id;
       if (typeof id !== "string" || id.length === 0) {
         setErrorMsg("Failed to save prospect: Missing id in response.");
@@ -152,10 +172,12 @@ export function RegisterProspectForm() {
       }
 
       setSuccessMsg("Prospect saved successfully");
+      alert("Lead saved successfully");
       setTimeout(() => {
         router.push(`/leads/${id}`);
       }, 800);
     } catch (err) {
+      console.error("Save failed:", err);
       const detail =
         err instanceof TypeError && (err.message === "Failed to fetch" || err.message === "Load failed")
           ? "Could not reach the server."
@@ -188,7 +210,7 @@ export function RegisterProspectForm() {
 
   return (
     <div className="max-w-2xl">
-      <form onSubmit={handleSubmit} className="space-y-0">
+      <form onSubmit={guardForm} className="space-y-0" noValidate>
         {statusBanner}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -322,8 +344,15 @@ export function RegisterProspectForm() {
           </label>
         </div>
 
-        <div className="mt-8 [&>button[type=submit]]:rounded-lg [&>button[type=submit]]:px-6 [&>button[type=submit]]:py-3 [&>button[type=submit]]:text-sm [&>button[type=submit]]:font-semibold [&>button[type=submit]]:text-white [&>button[type=submit]]:bg-[linear-gradient(135deg,#C9A84C,#A6862E)] [&>button[type=submit]]:shadow-gold [&>button[type=submit]]:hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] [&>button[type=submit]]:transition-shadow">
-          <button type="submit">Save prospect</button>
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow disabled:opacity-50"
+          >
+            Save prospect
+          </button>
         </div>
       </form>
 
