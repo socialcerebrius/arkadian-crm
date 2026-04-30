@@ -22,6 +22,9 @@ export type DemoLead = {
     | "closed_won"
     | "closed_lost";
   score: number;
+  /** Present for API-listed DB leads; demo rows may omit. */
+  budgetMin?: number;
+  budgetMax?: number;
   budgetLabel: string;
   preferredUnit?: string;
   preferredView?: string;
@@ -131,6 +134,9 @@ export const demoPipelineLeads: PipelineLead[] = demoLeads.map((l) => ({
   id: l.id,
   name: l.name,
   score: l.score,
+  source: l.source.replaceAll("_", " "),
+  phone: l.phone,
+  email: l.email,
   budgetLabel: l.budgetLabel,
   unitLabel: l.preferredUnit,
   viewLabel: l.preferredView,

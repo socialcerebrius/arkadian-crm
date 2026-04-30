@@ -5,6 +5,11 @@ export type ApiLeadListItem = {
   name: string;
   status: string;
   score: number;
+  source?: string;
+  phone?: string;
+  email?: string;
+  budgetMin?: number;
+  budgetMax?: number;
   budgetLabel: string;
   preferredUnit?: string;
   preferredView?: string;
@@ -20,15 +25,27 @@ function daysFromUpdatedLabel(label: string | undefined): number {
   return 0;
 }
 
+const KNOWN_STAGES = new Set<PipelineStage>([
+  "new",
+  "contacted",
+  "viewing_booked",
+  "negotiating",
+  "closed_won",
+  "closed_lost",
+]);
+
 function isPipelineStage(s: string): s is PipelineStage {
-  return (
-    s === "new" ||
-    s === "contacted" ||
-    s === "viewing_booked" ||
-    s === "negotiating" ||
-    s === "closed_won" ||
-    s === "closed_lost"
-  );
+  return KNOWN_STAGES.has(s as PipelineStage);
+}
+
+/** Map API/DB status to a pipeline column. Never drops a lead. */
+export function normalizeToPipelineStage(status: unknown): PipelineStage {
+  const s = typeof status === "string" ? status.trim() : "";
+  if (isPipelineStage(s)) return s;
+  const lower = s.toLowerCase();
+  if (lower === "closed" || lower === "won") return "closed_won";
+  if (lower === "lost") return "closed_lost";
+  return "new";
 }
 
 const UNIT_LABELS: Record<string, string> = {
@@ -56,17 +73,28 @@ function formatViewLabel(v: string | undefined): string | undefined {
   return VIEW_LABELS[v] ?? v;
 }
 
-export function mapApiLeadToPipelineLead(raw: ApiLeadListItem): PipelineLead | null {
-  if (!isPipelineStage(raw.status)) return null;
+function formatSourceLabel(source: string | undefined): string {
+  if (!source) return "—";
+  return source.replaceAll("_", " ");
+}
+
+export function mapApiLeadToPipelineLead(raw: ApiLeadListItem): PipelineLead {
+  const score = typeof raw.score === "number" && !Number.isNaN(raw.score) ? raw.score : 0;
+
   return {
     id: raw.id,
     name: raw.name,
-    score: raw.score,
-    budgetLabel: raw.budgetLabel,
+    score,
+    stage: normalizeToPipelineStage(raw.status),
+    source: formatSourceLabel(raw.source),
+    budgetLabel: raw.budgetLabel || "PKR —",
+    budgetMin: raw.budgetMin,
+    budgetMax: raw.budgetMax,
+    phone: raw.phone,
+    email: raw.email,
     unitLabel: formatUnitLabel(raw.preferredUnit),
     viewLabel: formatViewLabel(raw.preferredView),
     daysInStage: daysFromUpdatedLabel(raw.updatedLabel),
     ownerLabel: raw.ownerLabel,
-    stage: raw.status,
   };
 }

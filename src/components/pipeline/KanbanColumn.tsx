@@ -41,7 +41,7 @@ export function KanbanColumn({
               snapshot.isDraggingOver ? "bg-gold/5" : "",
             ].join(" ")}
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-h-[120px]">
               {leads.map((lead, index) => (
                 <Draggable key={lead.id} draggableId={lead.id} index={index}>
                   {(dragProvided) => (
@@ -56,11 +56,6 @@ export function KanbanColumn({
                 </Draggable>
               ))}
               {provided.placeholder}
-              {leads.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-light-grey p-6 text-center text-sm text-medium-grey">
-                  No active prospects.
-                </div>
-              ) : null}
             </div>
           </div>
         )}

@@ -8,7 +8,6 @@ import {
 import { PIPELINE_STAGES } from "./constants";
 import type { PipelineLead, PipelineStage } from "./types";
 import { KanbanColumn } from "./KanbanColumn";
-import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import {
   mapApiLeadToPipelineLead,
   type ApiLeadListItem,
@@ -72,7 +71,7 @@ export function KanbanBoard() {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await fetch("/api/leads?limit=50", { cache: "no-store" });
+      const res = await fetch("/api/leads?limit=100&page=1", { cache: "no-store" });
       if (!res.ok) {
         setFetchError("Unable to load pipeline.");
         setLeads([]);
@@ -88,9 +87,7 @@ export function KanbanBoard() {
         setLeads([]);
         return;
       }
-      const mapped = data
-        .map((row) => mapApiLeadToPipelineLead(row as ApiLeadListItem))
-        .filter((l): l is PipelineLead => l != null);
+      const mapped = data.map((row) => mapApiLeadToPipelineLead(row as ApiLeadListItem));
       setLeads(mapped);
     } catch {
       setFetchError("Unable to load pipeline.");
@@ -138,14 +135,8 @@ export function KanbanBoard() {
 
   if (loading) {
     return (
-      <div className="flex gap-6 min-w-max overflow-x-auto pb-4">
-        {PIPELINE_STAGES.map((s) => (
-          <div key={s.key} className="w-[340px] shrink-0 space-y-4">
-            <LoadingSkeleton className="h-12 w-full" />
-            <LoadingSkeleton className="h-36 w-full" />
-            <LoadingSkeleton className="h-36 w-full" />
-          </div>
-        ))}
+      <div className="rounded-xl border border-light-grey bg-white shadow-card p-10 text-center text-medium-grey">
+        Loading pipeline…
       </div>
     );
   }
@@ -161,6 +152,18 @@ export function KanbanBoard() {
         >
           Retry
         </button>
+      </div>
+    );
+  }
+
+  if (leads.length === 0) {
+    return (
+      <div className="rounded-xl border border-light-grey bg-white shadow-card p-12 text-center">
+        <p className="text-navy font-medium">No leads in the pipeline yet</p>
+        <p className="mt-2 text-sm text-medium-grey max-w-md mx-auto">
+          New prospects appear here after you register them. Use &quot;Register Prospect&quot; above to add
+          one; they start in the <strong>New</strong> column.
+        </p>
       </div>
     );
   }

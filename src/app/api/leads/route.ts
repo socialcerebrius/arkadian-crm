@@ -179,6 +179,8 @@ export async function GET(req: NextRequest) {
         source: l.source,
         status: l.status,
         score: l.score,
+        budgetMin: l.budgetMin != null ? Number(l.budgetMin) : undefined,
+        budgetMax: l.budgetMax != null ? Number(l.budgetMax) : undefined,
         budgetLabel: budgetLabel(l.budgetMin, l.budgetMax),
         preferredUnit: l.preferredUnit ?? undefined,
         preferredView: l.preferredView ?? undefined,

@@ -17,10 +17,10 @@ export const PIPELINE_STAGES: {
     label: "Negotiating",
     topBorderClass: "border-t-[color:var(--color-purple)]",
   },
-  { key: "closed_won", label: "Closed Won", topBorderClass: "border-t-success" },
+  { key: "closed_won", label: "Closed", topBorderClass: "border-t-success" },
   {
     key: "closed_lost",
-    label: "Closed Lost",
+    label: "Lost",
     topBorderClass: "border-t-[color:color-mix(in_oklab,var(--color-medium-grey)_60%,white)]",
   },
 ];
