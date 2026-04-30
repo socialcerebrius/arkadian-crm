@@ -85,11 +85,7 @@ export function RegisterProspectForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  /** Client-only submit: never use HTML action / formAction or Server Actions. */
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    event.stopPropagation();
-
+  async function executeSave() {
     setError(null);
     setLoading(true);
 
@@ -166,147 +162,166 @@ export function RegisterProspectForm() {
     }
   }
 
+  /** Synchronous: must cancel native form navigation before any await (no Server Actions, no document POST). */
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    void executeSave();
+  }
+
   const fieldClass =
     "mt-2 w-full rounded-lg border border-light-grey bg-white px-3 py-2 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-gold/40";
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl">
-      {error ? (
-        <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy whitespace-pre-line">
-          {error}
+    <div className="max-w-2xl">
+      <form onSubmit={handleSubmit} className="space-y-0">
+        {error ? (
+          <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy whitespace-pre-line">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <label className="sm:col-span-2 block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
+              Full name <span className="text-gold">*</span>
+            </span>
+            <input
+              className={fieldClass}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoComplete="name"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Phone</span>
+            <input
+              className={fieldClass}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Email</span>
+            <input
+              className={fieldClass}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Source</span>
+            <select
+              className={fieldClass}
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+            >
+              {SOURCES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Urgency</span>
+            <select
+              className={fieldClass}
+              value={urgency}
+              onChange={(e) => setUrgency(e.target.value as UrgencyValue)}
+            >
+              {URGENCY_OPTIONS.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
+              Budget min (PKR Cr)
+            </span>
+            <input
+              className={fieldClass}
+              inputMode="decimal"
+              value={budgetMinCr}
+              onChange={(e) => setBudgetMinCr(e.target.value)}
+              placeholder="e.g. 3"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
+              Budget max (PKR Cr)
+            </span>
+            <input
+              className={fieldClass}
+              inputMode="decimal"
+              value={budgetMaxCr}
+              onChange={(e) => setBudgetMaxCr(e.target.value)}
+              placeholder="e.g. 8"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Unit preference</span>
+            <select
+              className={fieldClass}
+              value={preferredUnit}
+              onChange={(e) => setPreferredUnit(e.target.value)}
+            >
+              {UNITS.map((u) => (
+                <option key={u.value === "" ? "__empty" : u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">View preference</span>
+            <select
+              className={fieldClass}
+              value={preferredView}
+              onChange={(e) => setPreferredView(e.target.value)}
+            >
+              {VIEWS.map((v) => (
+                <option key={v.value === "" ? "__empty" : v.value} value={v.value}>
+                  {v.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-      ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <label className="sm:col-span-2 block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
-            Full name <span className="text-gold">*</span>
-          </span>
-          <input
-            className={fieldClass}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            autoComplete="name"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Phone</span>
-          <input
-            className={fieldClass}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            autoComplete="tel"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Email</span>
-          <input
-            className={fieldClass}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Source</span>
-          <select
-            className={fieldClass}
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
+        <div className="mt-8">
+          {/*
+            type="button" so the browser never performs a native form submit (document navigation).
+            Same executeSave as Enter via handleSubmit on <form>.
+          */}
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              void executeSave();
+            }}
+            className="rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow disabled:opacity-50"
           >
-            {SOURCES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            {loading ? "Saving…" : "Save prospect"}
+          </button>
+        </div>
+      </form>
 
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Urgency</span>
-          <select
-            className={fieldClass}
-            value={urgency}
-            onChange={(e) => setUrgency(e.target.value as UrgencyValue)}
-          >
-            {URGENCY_OPTIONS.map((u) => (
-              <option key={u.value} value={u.value}>
-                {u.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
-            Budget min (PKR Cr)
-          </span>
-          <input
-            className={fieldClass}
-            inputMode="decimal"
-            value={budgetMinCr}
-            onChange={(e) => setBudgetMinCr(e.target.value)}
-            placeholder="e.g. 3"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
-            Budget max (PKR Cr)
-          </span>
-          <input
-            className={fieldClass}
-            inputMode="decimal"
-            value={budgetMaxCr}
-            onChange={(e) => setBudgetMaxCr(e.target.value)}
-            placeholder="e.g. 8"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">Unit preference</span>
-          <select
-            className={fieldClass}
-            value={preferredUnit}
-            onChange={(e) => setPreferredUnit(e.target.value)}
-          >
-            {UNITS.map((u) => (
-              <option key={u.value === "" ? "__empty" : u.value} value={u.value}>
-                {u.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">View preference</span>
-          <select
-            className={fieldClass}
-            value={preferredView}
-            onChange={(e) => setPreferredView(e.target.value)}
-          >
-            {VIEWS.map((v) => (
-              <option key={v.value === "" ? "__empty" : v.value} value={v.value}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="mt-8 flex flex-wrap items-center gap-4">
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow disabled:opacity-50"
-        >
-          {loading ? "Saving…" : "Save prospect"}
-        </button>
+      <div className="mt-4">
         <Link
           href="/leads"
           className="text-sm font-medium text-medium-grey hover:text-navy transition-colors"
@@ -314,6 +329,6 @@ export function RegisterProspectForm() {
           Cancel
         </Link>
       </div>
-    </form>
+    </div>
   );
 }
