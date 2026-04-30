@@ -54,6 +54,12 @@ enum CallDirection {
   outbound
 }
 
+// Vapi call logging; uppercase members for webhook / external parity.
+enum CallLogDirection {
+  INBOUND
+  OUTBOUND
+}
+
 enum Sentiment {
   positive
   neutral
@@ -153,10 +159,14 @@ model Lead {
   updatedAt      DateTime        @updatedAt @map("updated_at")
   deletedAt      DateTime?       @map("deleted_at")
 
+  // Last Vapi (or telephony) interaction; optional denormalization for UI.
+  lastCallAt DateTime? @map("last_call_at")
+
   ownerId String? @map("owner_id")
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  calls        Call[]
+  calls     Call[]
+  callLogs  CallLog[]
   activities   Activity[]
   gameSessions GameSession[]
   aiOutputs    AIOutput[]
@@ -186,6 +196,29 @@ model Call {
 
   @@index([leadId, createdAt(sort: Desc)])
   @@map("calls")
+}
+
+model CallLog {
+  id           String           @id @default(uuid())
+  leadId       String           @map("lead_id")
+  vapiCallId   String?          @unique @map("vapi_call_id")
+  direction    CallLogDirection
+  status       String           @default("pending") @db.VarChar(100)
+  outcome      String?          @db.VarChar(500)
+  summary      String?          @db.Text
+  transcript   String?          @db.Text
+  recordingUrl String?          @map("recording_url")
+  transferred  Boolean          @default(false)
+  startedAt    DateTime?        @map("started_at")
+  endedAt      DateTime?        @map("ended_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, startedAt(sort: Desc)])
+  @@index([leadId, createdAt(sort: Desc)])
+  @@map("call_logs")
 }
 
 model Activity {

@@ -1,3 +1,4 @@
+import { GripVertical } from "lucide-react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import type { PipelineLead, PipelineStage } from "./types";
 import { LeadCard } from "./LeadCard";
@@ -48,8 +49,16 @@ export function KanbanColumn({
                     <div
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
-                      {...dragProvided.dragHandleProps}
+                      className="flex rounded-lg overflow-hidden border border-light-grey/80 bg-white shadow-[0_2px_15px_rgba(10,22,40,0.04)] hover:shadow-[0_6px_18px_rgba(10,22,40,0.06)] transition-shadow"
                     >
+                      <button
+                        type="button"
+                        {...dragProvided.dragHandleProps}
+                        className="shrink-0 w-9 flex items-center justify-center border-r border-light-grey/70 bg-cream/40 text-medium-grey hover:bg-cream/70 cursor-grab active:cursor-grabbing"
+                        aria-label="Drag to move between stages"
+                      >
+                        <GripVertical className="w-4 h-4" />
+                      </button>
                       <LeadCard lead={lead} />
                     </div>
                   )}

@@ -5,6 +5,7 @@ import { RecentCalls } from "@/components/dashboard/RecentCalls";
 import { AIRecommendations } from "@/components/dashboard/AIRecommendations";
 import { TargetGraph } from "@/components/dashboard/TargetGraph";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Activity,
   Flame,
@@ -40,7 +41,12 @@ async function getBaseUrl() {
 }
 
 async function getDashboardHotLeads(baseUrl: string): Promise<DemoLead[]> {
-  const res = await fetch(`${baseUrl}/api/dashboard/hot-leads`, { cache: "no-store" });
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
+  const res = await fetch(`${baseUrl}/api/dashboard/hot-leads`, {
+    cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
+  });
   if (!res.ok) return [];
   const json: unknown = await res.json();
   const data =
@@ -49,7 +55,12 @@ async function getDashboardHotLeads(baseUrl: string): Promise<DemoLead[]> {
 }
 
 async function getDashboardRecentCalls(baseUrl: string): Promise<DemoCall[]> {
-  const res = await fetch(`${baseUrl}/api/dashboard/recent-calls`, { cache: "no-store" });
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
+  const res = await fetch(`${baseUrl}/api/dashboard/recent-calls`, {
+    cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
+  });
   if (!res.ok) return [];
   const json: unknown = await res.json();
   const data =
@@ -58,7 +69,12 @@ async function getDashboardRecentCalls(baseUrl: string): Promise<DemoCall[]> {
 }
 
 async function getPipelineCounts(baseUrl: string): Promise<PipelineCounts | null> {
-  const res = await fetch(`${baseUrl}/api/dashboard/pipeline-counts`, { cache: "no-store" });
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
+  const res = await fetch(`${baseUrl}/api/dashboard/pipeline-counts`, {
+    cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
+  });
   if (!res.ok) return null;
   const json: unknown = await res.json();
   const data =
@@ -76,7 +92,12 @@ async function getPipelineCounts(baseUrl: string): Promise<PipelineCounts | null
 }
 
 async function getDashboardStats(baseUrl: string): Promise<DashboardStats | null> {
-  const res = await fetch(`${baseUrl}/api/dashboard/stats`, { cache: "no-store" });
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
+  const res = await fetch(`${baseUrl}/api/dashboard/stats`, {
+    cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
+  });
   if (!res.ok) return null;
   const json: unknown = await res.json();
   const data =
@@ -106,6 +127,16 @@ export default async function Home() {
       <div className="max-w-[1440px] mx-auto">
         <div className="flex items-end justify-between gap-6">
           <div>
+            <div className="flex items-center gap-3">
+              <Image
+                src="/arkadians-clearlogo-alpha.png"
+                alt="The Arkadians"
+                width={520}
+                height={180}
+                priority
+                className="h-12 w-auto"
+              />
+            </div>
             <div className="text-xs tracking-[0.2em] uppercase text-medium-grey">
               Private Dashboard
             </div>

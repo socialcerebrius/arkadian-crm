@@ -1,23 +1,21 @@
 import Image from "next/image";
 
 export function ArkLogo({
-  variant = "white",
   className = "",
 }: {
-  variant?: "white" | "gold";
   className?: string;
 }) {
-  const src = "/arkadians-logo.svg";
+  const src = "/arkadians-clearlogo-alpha.png";
 
   return (
-    <div className={className} aria-label="The Arkadians">
+    <div aria-label="The Arkadians">
       <Image
         src={src}
         alt="The Arkadians"
-        width={160}
-        height={48}
+        width={520}
+        height={180}
         priority
-        className={variant === "gold" ? "opacity-90" : ""}
+        className={className || "h-12 w-auto"}
       />
     </div>
   );

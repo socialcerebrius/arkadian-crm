@@ -11,7 +11,12 @@ async function getBaseUrl() {
 }
 
 async function getCalls(baseUrl: string) {
-  const res = await fetch(`${baseUrl}/api/calls`, { cache: "no-store" });
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
+  const res = await fetch(`${baseUrl}/api/calls`, {
+    cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
+  });
   if (!res.ok) return [] as DemoCall[];
   const json: unknown = await res.json();
   if (!json || typeof json !== "object") return [] as DemoCall[];

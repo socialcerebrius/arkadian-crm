@@ -32,6 +32,9 @@ export type DemoLead = {
   language?: string;
   ownerLabel?: string;
   updatedLabel: string;
+  /** Formatted labels when available (e.g. from DB). */
+  createdAtLabel?: string;
+  updatedAtLabel?: string;
 };
 
 export type DemoCall = {

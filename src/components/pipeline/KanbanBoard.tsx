@@ -61,47 +61,98 @@ function rebuildLeadsAfterDrag(leads: PipelineLead[], result: DropResult): Pipel
   return PIPELINE_STAGES.flatMap((s) => grouped[s.key]);
 }
 
-export function KanbanBoard() {
-  const [leads, setLeads] = useState<PipelineLead[]>([]);
-  const [loading, setLoading] = useState(true);
+const LEADS_URL = "/api/leads?limit=100&page=1";
+
+type KanbanBoardProps = {
+  initialLeads: PipelineLead[];
+};
+
+export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
+  const [leads, setLeads] = useState<PipelineLead[]>(initialLeads);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /** Client mount fetch finished (success, HTTP error path, timeout, or throw). */
+  const [clientFetchDone, setClientFetchDone] = useState(false);
 
-  const loadLeads = useCallback(async () => {
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const res = await fetch("/api/leads?limit=100&page=1", { cache: "no-store" });
+  const fetchLeadsFromApi = useCallback(
+    async (
+      signal: AbortSignal | undefined,
+      options: { clearLeadsOnError: boolean },
+    ) => {
+      console.log("Fetching leads…");
+      setFetchError(null);
+      const res = await fetch(LEADS_URL, {
+        cache: "no-store",
+        signal,
+        credentials: "same-origin",
+      });
+
       if (!res.ok) {
         setFetchError("Unable to load pipeline.");
-        setLeads([]);
+        if (options.clearLeadsOnError) setLeads([]);
         return;
       }
-      const json: unknown = await res.json();
+
+      let json: unknown;
+      try {
+        json = await res.json();
+      } catch {
+        setFetchError("Invalid pipeline response (could not parse JSON).");
+        if (options.clearLeadsOnError) setLeads([]);
+        return;
+      }
+
       const data =
         json && typeof json === "object" && "data" in json
           ? (json as { data?: unknown }).data
           : undefined;
       if (!Array.isArray(data)) {
         setFetchError("Invalid pipeline response.");
-        setLeads([]);
+        if (options.clearLeadsOnError) setLeads([]);
         return;
       }
       const mapped = data.map((row) => mapApiLeadToPipelineLead(row as ApiLeadListItem));
       setLeads(mapped);
-    } catch {
-      setFetchError("Unable to load pipeline.");
-      setLeads([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
-    void loadLeads();
-  }, [loadLeads]);
+    let alive = true;
+    const ac = new AbortController();
+    const timeoutMs = 28_000;
+    const t = window.setTimeout(() => ac.abort(), timeoutMs);
+
+    (async () => {
+      try {
+        await fetchLeadsFromApi(ac.signal, { clearLeadsOnError: true });
+      } catch (e) {
+        if (!alive) return;
+        if (ac.signal.aborted) {
+          setFetchError(
+            "Loading the pipeline timed out. Check the connection or try Retry.",
+          );
+        } else {
+          const msg = e instanceof Error ? e.message : "Unknown error";
+          setFetchError(`Unable to load pipeline. (${msg})`);
+        }
+      } finally {
+        window.clearTimeout(t);
+        if (alive) setClientFetchDone(true);
+      }
+    })();
+
+    return () => {
+      alive = false;
+      window.clearTimeout(t);
+      ac.abort();
+    };
+  }, [fetchLeadsFromApi]);
 
   const grouped = useMemo(() => groupByStage(leads), [leads]);
+
+  const showBootstrapSpinner =
+    !clientFetchDone && leads.length === 0 && fetchError == null;
 
   async function onDragEnd(result: DropResult) {
     setSaveError(null);
@@ -123,6 +174,7 @@ export function KanbanBoard() {
     const res = await fetch(`/api/leads/${draggableId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ status: toStage }),
     });
 
@@ -130,10 +182,37 @@ export function KanbanBoard() {
 
     setSaveError("Could not save stage. Reverted.");
     setLeads(previous);
-    void loadLeads();
+    try {
+      await fetchLeadsFromApi(undefined, { clearLeadsOnError: false });
+    } catch {
+      /* ignore */
+    }
   }
 
-  if (loading) {
+  async function handleRetry() {
+    setFetchError(null);
+    setClientFetchDone(false);
+    const ac = new AbortController();
+    const t = window.setTimeout(() => ac.abort(), 28_000);
+    const clearOnError = leads.length === 0;
+    try {
+      await fetchLeadsFromApi(ac.signal, { clearLeadsOnError: clearOnError });
+    } catch (e) {
+      if (ac.signal.aborted) {
+        setFetchError(
+          "Loading the pipeline timed out. Check the connection or try again.",
+        );
+      } else {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        setFetchError(`Unable to load pipeline. (${msg})`);
+      }
+    } finally {
+      window.clearTimeout(t);
+      setClientFetchDone(true);
+    }
+  }
+
+  if (showBootstrapSpinner) {
     return (
       <div className="rounded-xl border border-light-grey bg-white shadow-card p-10 text-center text-medium-grey">
         Loading pipeline…
@@ -141,13 +220,13 @@ export function KanbanBoard() {
     );
   }
 
-  if (fetchError) {
+  if (fetchError && leads.length === 0) {
     return (
       <div className="rounded-lg border border-light-grey bg-white p-8 text-center">
         <p className="text-medium-grey">{fetchError}</p>
         <button
           type="button"
-          onClick={() => void loadLeads()}
+          onClick={() => void handleRetry()}
           className="mt-4 rounded-lg px-5 py-2 text-sm font-semibold text-white bg-[linear-gradient(135deg,#0A1628,#1a2c4e)]"
         >
           Retry
@@ -173,6 +252,19 @@ export function KanbanBoard() {
       {saveError ? (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-navy">
           {saveError}
+        </div>
+      ) : null}
+
+      {fetchError && leads.length > 0 ? (
+        <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-navy flex flex-wrap items-center justify-between gap-3">
+          <span>{fetchError}</span>
+          <button
+            type="button"
+            onClick={() => void handleRetry()}
+            className="rounded-lg px-4 py-2 text-xs font-semibold text-white bg-[linear-gradient(135deg,#0A1628,#1a2c4e)]"
+          >
+            Refresh data
+          </button>
         </div>
       ) : null}
 

@@ -1,4 +1,6 @@
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import { SEED_USER_PASSWORD } from "../src/lib/seed-auth";
 
 const prisma = new PrismaClient();
 
@@ -6,17 +8,24 @@ const prisma = new PrismaClient();
 const SEED_EMAIL_DOMAIN = "seed.arkadians.local";
 
 async function main() {
+  const passwordHash = await bcrypt.hash(SEED_USER_PASSWORD, 10);
+
   await prisma.lead.deleteMany({
     where: { email: { endsWith: `@${SEED_EMAIL_DOMAIN}` } },
   });
 
   const user = await prisma.user.upsert({
     where: { email: "ahmad@arkadians.local" },
-    update: { name: "Ahmad Raza", role: "manager", status: "active" },
+    update: {
+      name: "Ahmad Raza",
+      role: "manager",
+      status: "active",
+      passwordHash,
+    },
     create: {
       name: "Ahmad Raza",
       email: "ahmad@arkadians.local",
-      passwordHash: "dev-only-not-for-production-auth",
+      passwordHash,
       role: "manager",
       status: "active",
     },
@@ -24,11 +33,16 @@ async function main() {
 
   const salesRep = await prisma.user.upsert({
     where: { email: "sara@arkadians.local" },
-    update: { name: "Sara Malik", role: "sales_rep", status: "active" },
+    update: {
+      name: "Sara Malik",
+      role: "sales_rep",
+      status: "active",
+      passwordHash,
+    },
     create: {
       name: "Sara Malik",
       email: "sara@arkadians.local",
-      passwordHash: "dev-only-not-for-production-auth",
+      passwordHash,
       role: "sales_rep",
       status: "active",
     },

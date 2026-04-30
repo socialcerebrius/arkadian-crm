@@ -40,6 +40,7 @@ export async function getLeadDetailById(id: string): Promise<DemoLead | null> {
       preferredView: true,
       urgency: true,
       language: true,
+      createdAt: true,
       updatedAt: true,
     },
   });
@@ -60,5 +61,13 @@ export async function getLeadDetailById(id: string): Promise<DemoLead | null> {
     urgency: lead.urgency,
     language: lead.language,
     updatedLabel: "Recently",
+    createdAtLabel: lead.createdAt.toLocaleString("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }),
+    updatedAtLabel: lead.updatedAt.toLocaleString("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }),
   };
 }

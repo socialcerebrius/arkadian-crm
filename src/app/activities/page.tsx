@@ -11,7 +11,12 @@ async function getBaseUrl() {
 }
 
 async function getActivities(baseUrl: string) {
-  const res = await fetch(`${baseUrl}/api/activities`, { cache: "no-store" });
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
+  const res = await fetch(`${baseUrl}/api/activities`, {
+    cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
+  });
   if (!res.ok) return [] as DemoActivity[];
   const json: unknown = await res.json();
   if (!json || typeof json !== "object") return [] as DemoActivity[];

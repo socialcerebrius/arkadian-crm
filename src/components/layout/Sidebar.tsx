@@ -28,7 +28,7 @@ export function Sidebar() {
       <div className="w-full flex flex-col h-full">
         <div className="h-20 px-6 flex items-center border-b border-light-grey">
           <div className="flex items-center gap-3">
-            <ArkLogo className="h-8 w-auto" />
+            <ArkLogo className="h-12 w-auto" />
             <div className="leading-tight">
               <div className="font-(--font-display) tracking-wide text-navy text-base">
                 The Arkadians

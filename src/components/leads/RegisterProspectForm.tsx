@@ -89,6 +89,7 @@ export function RegisterProspectForm() {
   const [preferredView, setPreferredView] = useState("");
   const [urgency, setUrgency] = useState<UrgencyValue>("medium");
   const [saving, setSaving] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -104,6 +105,7 @@ export function RegisterProspectForm() {
 
     setSuccessMsg(null);
     setErrorMsg(null);
+    setRedirecting(false);
 
     if (!name.trim()) {
       setErrorMsg("Failed to save prospect: Name is required.");
@@ -171,11 +173,11 @@ export function RegisterProspectForm() {
         return;
       }
 
-      setSuccessMsg("Prospect saved successfully");
-      alert("Lead saved successfully");
+      setSuccessMsg("You’ll be taken to the pipeline in a moment.");
+      setRedirecting(true);
       setTimeout(() => {
-        router.push(`/leads/${id}`);
-      }, 800);
+        router.push("/pipeline");
+      }, 1400);
     } catch (err) {
       console.error("Save failed:", err);
       const detail =
@@ -190,17 +192,27 @@ export function RegisterProspectForm() {
     }
   }
 
+  const fieldDisabled = saving || redirecting;
   const fieldClass =
-    "mt-2 w-full rounded-lg border border-light-grey bg-white px-3 py-2 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-gold/40";
+    "mt-2 w-full rounded-lg border border-light-grey bg-white px-3 py-2 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-gold/40 disabled:opacity-60 disabled:cursor-not-allowed";
 
   const statusBanner =
     saving ? (
-      <div className="mb-6 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-navy">
-        Saving...
+      <div
+        className="mb-6 rounded-lg border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-navy"
+        role="status"
+        aria-live="polite"
+      >
+        Saving…
       </div>
     ) : successMsg ? (
-      <div className="mb-6 rounded-lg border border-gold/50 bg-gold/10 px-4 py-3 text-sm text-navy">
-        {successMsg}
+      <div
+        className="mb-6 rounded-lg border border-success/50 bg-success/10 px-4 py-3 text-sm text-navy shadow-sm"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="font-semibold text-navy">Prospect saved</div>
+        <p className="mt-1 text-medium-grey leading-snug">{successMsg}</p>
       </div>
     ) : errorMsg ? (
       <div className="mb-6 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-navy whitespace-pre-line">
@@ -225,6 +237,7 @@ export function RegisterProspectForm() {
               required
               autoComplete="name"
               name="prospectName"
+              disabled={fieldDisabled}
             />
           </label>
 
@@ -236,6 +249,7 @@ export function RegisterProspectForm() {
               onChange={(e) => setPhone(e.target.value)}
               autoComplete="tel"
               name="prospectPhone"
+              disabled={fieldDisabled}
             />
           </label>
 
@@ -248,6 +262,7 @@ export function RegisterProspectForm() {
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               name="prospectEmail"
+              disabled={fieldDisabled}
             />
           </label>
 
@@ -258,6 +273,7 @@ export function RegisterProspectForm() {
               value={source}
               onChange={(e) => setSource(e.target.value)}
               name="prospectSource"
+              disabled={fieldDisabled}
             >
               {SOURCES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -274,6 +290,7 @@ export function RegisterProspectForm() {
               value={urgency}
               onChange={(e) => setUrgency(e.target.value as UrgencyValue)}
               name="prospectUrgency"
+              disabled={fieldDisabled}
             >
               {URGENCY_OPTIONS.map((u) => (
                 <option key={u.value} value={u.value}>
@@ -294,6 +311,7 @@ export function RegisterProspectForm() {
               onChange={(e) => setBudgetMinCr(e.target.value)}
               placeholder="e.g. 3"
               name="prospectBudgetMin"
+              disabled={fieldDisabled}
             />
           </label>
 
@@ -308,6 +326,7 @@ export function RegisterProspectForm() {
               onChange={(e) => setBudgetMaxCr(e.target.value)}
               placeholder="e.g. 8"
               name="prospectBudgetMax"
+              disabled={fieldDisabled}
             />
           </label>
 
@@ -318,6 +337,7 @@ export function RegisterProspectForm() {
               value={preferredUnit}
               onChange={(e) => setPreferredUnit(e.target.value)}
               name="prospectUnit"
+              disabled={fieldDisabled}
             >
               {UNITS.map((u) => (
                 <option key={u.value === "" ? "__empty" : u.value} value={u.value}>
@@ -334,6 +354,7 @@ export function RegisterProspectForm() {
               value={preferredView}
               onChange={(e) => setPreferredView(e.target.value)}
               name="prospectView"
+              disabled={fieldDisabled}
             >
               {VIEWS.map((v) => (
                 <option key={v.value === "" ? "__empty" : v.value} value={v.value}>
@@ -348,10 +369,10 @@ export function RegisterProspectForm() {
           <button
             type="button"
             onClick={() => void handleSave()}
-            disabled={saving}
+            disabled={saving || redirecting}
             className="rounded-lg px-6 py-3 text-sm font-semibold text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] shadow-gold hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow disabled:opacity-50"
           >
-            Save prospect
+            {redirecting ? "Redirecting…" : saving ? "Saving…" : "Save prospect"}
           </button>
         </div>
       </form>

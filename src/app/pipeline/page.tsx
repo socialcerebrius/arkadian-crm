@@ -1,7 +1,53 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
+import type { PipelineLead } from "@/components/pipeline/types";
+import {
+  mapApiLeadToPipelineLead,
+  type ApiLeadListItem,
+} from "@/lib/map-lead-to-pipeline";
 
-export default function PipelinePage() {
+async function getBaseUrl() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  if (!host) return "http://localhost:3000";
+  return `${proto}://${host}`;
+}
+
+/** Same /api/leads source as Prospects; mapped for the board. */
+async function getInitialPipelineLeads(): Promise<PipelineLead[]> {
+  try {
+    const baseUrl = await getBaseUrl();
+    const h = await headers();
+    const cookie = h.get("cookie") ?? "";
+    const res = await fetch(`${baseUrl}/api/leads?limit=100&page=1`, {
+      cache: "no-store",
+      headers: cookie ? { cookie } : undefined,
+    });
+    if (!res.ok) return [];
+    const json: unknown = await res.json();
+    const data =
+      json && typeof json === "object" && "data" in json
+        ? (json as { data?: unknown }).data
+        : undefined;
+    if (!Array.isArray(data)) return [];
+    return data.map((row) => mapApiLeadToPipelineLead(row as ApiLeadListItem));
+  } catch {
+    return [];
+  }
+}
+
+export default async function PipelinePage() {
+  const initialLeads = await getInitialPipelineLeads();
+  const boardKey =
+    initialLeads.length === 0
+      ? "empty"
+      : initialLeads
+          .map((l) => l.id)
+          .sort()
+          .join("|");
+
   return (
     <div className="px-5 sm:px-8 py-8">
       <div className="max-w-[1440px] mx-auto">
@@ -24,10 +70,9 @@ export default function PipelinePage() {
         </div>
 
         <div className="mt-8">
-          <KanbanBoard />
+          <KanbanBoard key={boardKey} initialLeads={initialLeads} />
         </div>
       </div>
     </div>
   );
 }
-

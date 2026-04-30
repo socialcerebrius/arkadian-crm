@@ -8,8 +8,8 @@ Do not overengineer.
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopBar } from "@/components/layout/TopBar";
+import { AppShell } from "@/components/layout/AppShell";
+import { getSession } from "@/lib/auth";
 
 const arkadiansSans = Inter({
   variable: "--font-arkadians-sans",
@@ -31,26 +31,20 @@ export const metadata: Metadata = {
   description: "The Arkadians AI Sales & Experience CRM",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+
   return (
     <html
       lang="en"
       className={`${arkadiansSans.variable} ${arkadiansMono.variable} ${arkadiansDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-cream text-navy">
-        <div className="min-h-full flex">
-          <Sidebar />
-          <div className="flex-1 min-w-0 flex flex-col">
-            <TopBar />
-            <main className="flex-1 min-w-0 overflow-y-auto bg-[#FAFAFA]">
-              {children}
-            </main>
-          </div>
-        </div>
+        <AppShell sessionUser={session}>{children}</AppShell>
       </body>
     </html>
   );

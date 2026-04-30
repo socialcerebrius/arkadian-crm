@@ -1,4 +1,10 @@
-export function TopBar() {
+import { LogoutButton } from "./LogoutButton";
+
+export function TopBar({
+  user,
+}: {
+  user: { name: string; email: string } | null;
+}) {
   return (
     <header className="sticky top-0 z-30 w-full bg-white/85 backdrop-blur border-b border-light-grey">
       <div className="h-16 px-5 sm:px-8 flex items-center justify-between">
@@ -16,13 +22,26 @@ export function TopBar() {
           >
             Briefings
           </button>
-          <div
-            className="w-9 h-9 rounded-full bg-cream border border-light-grey"
-            aria-label="User"
-          />
+          {user ? (
+            <div className="flex items-center gap-2 pl-1">
+              <div className="hidden sm:flex flex-col items-end leading-tight">
+                <span className="text-xs font-semibold text-navy max-w-[160px] truncate">
+                  {user.name}
+                </span>
+                <span className="text-[10px] text-medium-grey max-w-[160px] truncate">
+                  {user.email}
+                </span>
+              </div>
+              <LogoutButton />
+            </div>
+          ) : (
+            <div
+              className="w-9 h-9 rounded-full bg-cream border border-light-grey"
+              aria-hidden
+            />
+          )}
         </div>
       </div>
     </header>
   );
 }
-

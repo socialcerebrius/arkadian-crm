@@ -18,8 +18,11 @@ async function getBaseUrl() {
 }
 
 async function getLeads(baseUrl: string) {
+  const h = await headers();
+  const cookie = h.get("cookie") ?? "";
   const res = await fetch(`${baseUrl}/api/leads`, {
     cache: "no-store",
+    headers: cookie ? { cookie } : undefined,
   });
   if (!res.ok) return [] as DemoLead[];
   const json: unknown = await res.json();
