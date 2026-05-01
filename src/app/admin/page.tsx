@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { MiniBarChart, MiniLineChart, ScoreDistribution } from "@/components/admin/AdminCharts";
+import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
 import {
   deriveBookingStatus,
   deriveNextAction,
@@ -326,316 +325,124 @@ export default async function AdminPage() {
 
   const advisorPipelineChart = advisorRows.slice(0, 6).map((r) => ({
     label: r.name.split(" ")[0] ?? r.name,
-    value: Number((r.pipeline / BigInt(10_000_000)) > BigInt(Number.MAX_SAFE_INTEGER) ? BigInt(Number.MAX_SAFE_INTEGER) : r.pipeline / BigInt(10_000_000)),
-    hint: "crore",
+    valueCrore: Number(r.pipeline / BigInt(10_000_000)),
   }));
+
+  const pipelineByStatusChart = Object.entries(
+    leadRows.reduce<Record<string, { count: number; pipeline: bigint }>>((acc, l) => {
+      const prev = acc[l.status] ?? { count: 0, pipeline: BigInt(0) };
+      acc[l.status] = { count: prev.count + 1, pipeline: prev.pipeline + getLeadBudgetValuePkr(l) };
+      return acc;
+    }, {}),
+  )
+    .map(([status, v]) => ({
+      status: status.replaceAll("_", " "),
+      count: v.count,
+      pipelineCrore: Number(v.pipeline / BigInt(10_000_000)),
+    }))
+    .sort((a, b) => b.pipelineCrore - a.pipelineCrore);
+
+  const sourcesChart = sourcePerformance.map((s) => ({
+    source: s.source.replaceAll("_", " "),
+    count: s.count,
+    avgScore: s.avgScore,
+  }));
+
+  const scoreDistChart = [
+    { bucket: "Hot" as const, count: hot },
+    { bucket: "Warm" as const, count: warm },
+    { bucket: "Cold" as const, count: cold },
+  ];
+
+  const revenueTrendChart = revenueTrend.map((d) => ({
+    label: d.label,
+    valueCrore: Number(projectedRevenuePkr / BigInt(10_000_000)) * (d.value / 3.0),
+  }));
+
+  const kpis = [
+    { title: "Total Prospects", value: String(totalProspects), badge: "+12% projected", tone: "gold" as const },
+    { title: "Hot Prospects", value: String(hotProspects), badge: "AI-qualified focus", tone: "success" as const },
+    { title: "Pipeline Value", value: formatPkrCrore(pipelineValuePkr), badge: "Live", tone: "gold" as const },
+    { title: "Projected Revenue", value: formatPkrCrore(projectedRevenuePkr), badge: "Projected", tone: "warning" as const },
+    { title: "Follow-ups Due", value: String(followUpsDue), badge: "Pending", tone: "warning" as const },
+    { title: "Viewings Booked", value: String(viewingsBooked), badge: "Active", tone: "success" as const },
+    { title: "AI Calls Logged", value: String(aiCallsLogged), badge: "Operational", tone: "slate" as const },
+    { title: "Conversion Focus", value: String(conversionFocus), badge: "Hot + callback", tone: "gold" as const },
+  ];
+
+  const topHotRows = topHot.map((r) => {
+    const pending = byLeadPendingActivity.get(r.lead.id) ?? null;
+    return {
+      id: r.lead.id,
+      name: r.lead.name,
+      budget: formatPkrCrore(getLeadBudgetValuePkr(r.lead)),
+      interest: getLeadInterest(r.lead),
+      score: r.lead.score,
+      status: r.lead.status.replaceAll("_", " "),
+      source: r.lead.source.replaceAll("_", " "),
+      nextAction: r.nextAction,
+      aiQualified: r.hasTranscript,
+      callbackLabel: pending?.dueAt ? formatDateTime(pending.dueAt) : null,
+    };
+  });
+
+  const followUpRows = (showSuggestedFollowUps ? suggestedFollowUps : upcoming).slice(0, 12).map((a: any) => ({
+    id: a.id,
+    leadName: a.leadName ?? a.leadName,
+    title: a.title ?? a.title,
+    dueLabel: a.dueAt ? formatDateTime(a.dueAt) : a.dueLabel ?? null,
+    status: (a.status ?? "pending").replaceAll("_", " "),
+    ownerLabel: a.userName ?? a.advisor ?? null,
+  }));
+
+  const bookingRows = bookingSnapshot.map((r) => ({
+    id: r.lead.id,
+    client: r.lead.name,
+    interest: getLeadInterest(r.lead),
+    bookingStatus: r.bookingStatus,
+    paidStatus: r.paidStatus,
+    estimatedValue: formatPkrCrore(getLeadBudgetValuePkr(r.lead)),
+    nextStep: r.next,
+  }));
+
+  const teamRows = advisorRows.map((r) => ({
+    name: r.name,
+    role: r.role,
+    assigned: r.assigned,
+    hot: r.hot,
+    calls: r.calls,
+    followUpsDue: r.due,
+    viewings: r.viewings,
+    pipelineValue: formatPkrCrore(r.pipeline),
+    performance: r.badge,
+  }));
+
+  const aiOps = [
+    { k: "AI browser tests completed", v: aiBrowserCompleted },
+    { k: "AI call attempts", v: aiCallsLogged },
+    { k: "Transcripts saved", v: transcriptsSaved },
+    { k: "Callback tasks created", v: callbackTasksCreated },
+    { k: "Hot leads identified", v: hotLeadsIdentified },
+    { k: "WhatsApp/email drafts", v: draftsDemo },
+  ];
 
   return (
     <div className="px-5 sm:px-8 py-8">
-      <div className="max-w-[1440px] mx-auto space-y-8">
-        <section className="rounded-xl border border-light-grey bg-white shadow-card p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
-            <div>
-              <div className="text-xs tracking-[0.2em] uppercase text-medium-grey">Admin Dashboard</div>
-              <h1 className="mt-2 font-(--font-display) text-3xl sm:text-4xl text-navy tracking-tight">
-                Arkadians Command Centre
-              </h1>
-              <p className="mt-2 text-sm text-medium-grey max-w-3xl leading-relaxed">
-                Private registry overview, sales pipeline, AI-qualified prospects and team performance
-              </p>
-              <div className="mt-3 text-xs text-medium-grey">Updated: {formatDateTime(now)}</div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="rounded-lg border border-light-grey bg-white px-4 py-2.5 text-xs font-semibold tracking-[0.15em] uppercase text-navy hover:border-gold hover:bg-cream/40 transition-colors"
-              >
-                Personal Command Centre
-              </Link>
-              <Link
-                href="/leads"
-                className="rounded-lg border border-navy/20 bg-navy px-4 py-2.5 text-xs font-semibold tracking-[0.15em] uppercase text-white hover:shadow-[0_4px_15px_rgba(10,22,40,0.22)] transition-shadow"
-              >
-                View prospects
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Total Prospects" value={totalProspects} change={12} trend="up" />
-          <StatCard title="Hot Prospects" value={hotProspects} change={6} trend="up" />
-          <StatCard title="Pipeline Value" value={formatPkrCrore(pipelineValuePkr)} change={8} trend="up" />
-          <StatCard title="Projected Revenue" value={`${formatPkrCrore(projectedRevenuePkr)}`} change={3} trend="up" />
-          <StatCard title="Follow-ups Due" value={followUpsDue} change={0} trend="flat" />
-          <StatCard title="Viewings Booked" value={viewingsBooked} change={4} trend="up" />
-          <StatCard title="AI Calls Logged" value={aiCallsLogged} change={0} trend="flat" />
-          <StatCard title="Conversion Focus" value={conversionFocus} change={0} trend="flat" />
-        </section>
-
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-5">
-            <MiniBarChart title="Pipeline by Status" data={pipelineByStatus} />
-          </div>
-          <div className="lg:col-span-4">
-            <div className="rounded-xl border border-light-grey bg-white shadow-card p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="font-(--font-display) text-navy">Lead Source Performance</div>
-                <span className="inline-flex items-center rounded-full border border-light-grey bg-white px-2.5 py-1 text-[11px] font-semibold text-medium-grey">
-                  Live
-                </span>
-              </div>
-              <div className="mt-4 space-y-3">
-                {sourcePerformance.map((s) => (
-                  <div key={s.source} className="rounded-lg border border-light-grey bg-cream/30 px-4 py-3">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="text-sm font-medium text-navy">{s.source.replaceAll("_", " ")}</div>
-                      <div className="text-xs text-medium-grey">
-                        {s.count} leads · avg score {s.avgScore.toFixed(0)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="lg:col-span-3 space-y-6">
-            <ScoreDistribution hot={hot} warm={warm} cold={cold} />
-            <MiniLineChart
-              title="Projected Revenue Trend"
-              subtitle="Projected from current pipeline"
-              data={revenueTrend}
-            />
-          </div>
-        </section>
-
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 rounded-xl border border-light-grey bg-white shadow-card p-6">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="font-(--font-display) text-lg text-navy">Top Hot Prospects</h2>
-              <Link href="/leads" className="text-xs font-semibold text-gold hover:text-gold-dark transition-colors">
-                View all
-              </Link>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-xs tracking-widest uppercase text-medium-grey">
-                  <tr className="border-b border-light-grey">
-                    <th className="py-3 text-left">Prospect</th>
-                    <th className="py-3 text-left">Budget</th>
-                    <th className="py-3 text-left">Interest</th>
-                    <th className="py-3 text-left">Score</th>
-                    <th className="py-3 text-left">Status</th>
-                    <th className="py-3 text-left">Source</th>
-                    <th className="py-3 text-left">Next Action</th>
-                  </tr>
-                </thead>
-                <tbody className="text-navy">
-                  {topHot.map((row) => (
-                    <tr key={row.lead.id} className="border-b border-light-grey/70">
-                      <td className="py-3">
-                        <Link href={`/leads/${row.lead.id}`} className="font-semibold hover:text-gold transition-colors">
-                          {row.lead.name}
-                        </Link>
-                        {row.hasTranscript ? (
-                          <div className="mt-1">
-                            <span className={["inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold", badgeClasses("success")].join(" ")}>
-                              AI qualified
-                            </span>
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="py-3">{formatPkrCrore(getLeadBudgetValuePkr(row.lead))}</td>
-                      <td className="py-3">{getLeadInterest(row.lead)}</td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center rounded-full border border-light-grey bg-cream/30 px-2 py-1 text-xs font-semibold">
-                          {row.lead.score}
-                        </span>
-                      </td>
-                      <td className="py-3">{row.lead.status.replaceAll("_", " ")}</td>
-                      <td className="py-3">{row.lead.source.replaceAll("_", " ")}</td>
-                      <td className="py-3 text-medium-grey">{row.nextAction}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="lg:col-span-4 space-y-6">
-            <div className="rounded-xl border border-light-grey bg-white shadow-card p-6">
-              <h2 className="font-(--font-display) text-lg text-navy">Follow-ups / Callbacks</h2>
-              {upcoming.length === 0 && !showSuggestedFollowUps ? (
-                <p className="mt-4 text-sm text-medium-grey">No follow-ups due.</p>
-              ) : (
-                <ul className="mt-4 space-y-3">
-                  {(showSuggestedFollowUps ? suggestedFollowUps : upcoming).slice(0, 8).map((a) => (
-                    <li key={a.id} className="rounded-lg border border-light-grey bg-cream/20 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wider text-medium-grey">
-                        {"type" in a ? (a as any).type?.replaceAll("_", " ") : "suggested"} ·{" "}
-                        <span className="font-semibold">{("status" in a ? (a as any).status : "pending").replaceAll("_", " ")}</span>
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-navy">
-                        {"leadName" in a ? (a as any).leadName : (a as any).leadName}
-                      </div>
-                      <div className="mt-1 text-xs text-medium-grey leading-relaxed">
-                        {"title" in a ? (a as any).title : ""}
-                      </div>
-                      <div className="mt-1 text-xs text-medium-grey">
-                        {"dueAt" in a && (a as any).dueAt ? `Due ${formatDateTime((a as any).dueAt)}` : ("dueLabel" in a ? (a as any).dueLabel : "")}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="rounded-xl border border-light-grey bg-white shadow-card p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-(--font-display) text-lg text-navy">AI Operations</h2>
-                  <div className="mt-1 text-xs text-medium-grey">
-                    Voice agent, transcript capture, callback extraction, and follow-up automation
-                  </div>
-                </div>
-                <span className={["inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold", badgeClasses("success")].join(" ")}>
-                  Operational
-                </span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                {[
-                  ["AI browser tests completed", aiBrowserCompleted],
-                  ["AI call attempts", aiCallsLogged],
-                  ["Transcripts saved", transcriptsSaved],
-                  ["Callback tasks created", callbackTasksCreated],
-                  ["Hot leads identified", hotLeadsIdentified],
-                  ["WhatsApp/email drafts", draftsDemo],
-                ].map(([k, v]) => (
-                  <div key={k} className="rounded-lg border border-light-grey bg-cream/20 px-4 py-3">
-                    <div className="text-xs text-medium-grey">{k}</div>
-                    <div className="mt-1 font-(--font-display) text-xl text-navy">{v}</div>
-                  </div>
-                ))}
-              </div>
-
-              <ul className="mt-4 text-xs text-medium-grey space-y-1.5">
-                {[
-                  "Voice agent qualifies enquiries",
-                  "Transcripts saved to client profile",
-                  "Callback times extracted",
-                  "Follow-up activity created",
-                  "WhatsApp/email drafting ready",
-                ].map((t) => (
-                  <li key={t} className="flex gap-2">
-                    <span className="text-gold">•</span>
-                    <span>{t}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-light-grey bg-white shadow-card p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-(--font-display) text-lg text-navy">Bookings & Payment Snapshot</h2>
-              <div className="mt-1 text-xs text-medium-grey">
-                Demo payment snapshot based on CRM pipeline data
-              </div>
-            </div>
-            <span className={["inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold", badgeClasses("warning")].join(" ")}>
-              Demo projection
-            </span>
-          </div>
-
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="text-xs tracking-widest uppercase text-medium-grey">
-                <tr className="border-b border-light-grey">
-                  <th className="py-3 text-left">Client</th>
-                  <th className="py-3 text-left">Interest</th>
-                  <th className="py-3 text-left">Booking Status</th>
-                  <th className="py-3 text-left">Paid Status</th>
-                  <th className="py-3 text-left">Estimated Value</th>
-                  <th className="py-3 text-left">Outstanding / Next Step</th>
-                </tr>
-              </thead>
-              <tbody className="text-navy">
-                {bookingSnapshot.map((r) => (
-                  <tr key={r.lead.id} className="border-b border-light-grey/70">
-                    <td className="py-3">
-                      <Link href={`/leads/${r.lead.id}`} className="font-semibold hover:text-gold transition-colors">
-                        {r.lead.name}
-                      </Link>
-                    </td>
-                    <td className="py-3">{getLeadInterest(r.lead)}</td>
-                    <td className="py-3">{r.bookingStatus}</td>
-                    <td className="py-3">{r.paidStatus}</td>
-                    <td className="py-3">{formatPkrCrore(getLeadBudgetValuePkr(r.lead))}</td>
-                    <td className="py-3 text-medium-grey">{r.next}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 rounded-xl border border-light-grey bg-white shadow-card p-6">
-            <h2 className="font-(--font-display) text-lg text-navy">Team Performance</h2>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="text-xs tracking-widest uppercase text-medium-grey">
-                  <tr className="border-b border-light-grey">
-                    <th className="py-3 text-left">Advisor</th>
-                    <th className="py-3 text-left">Role</th>
-                    <th className="py-3 text-left">Assigned Leads</th>
-                    <th className="py-3 text-left">Hot Leads</th>
-                    <th className="py-3 text-left">Calls</th>
-                    <th className="py-3 text-left">Follow-ups Due</th>
-                    <th className="py-3 text-left">Viewings</th>
-                    <th className="py-3 text-left">Pipeline Value</th>
-                    <th className="py-3 text-left">Performance</th>
-                  </tr>
-                </thead>
-                <tbody className="text-navy">
-                  {advisorRows.map((r) => (
-                    <tr key={r.name} className="border-b border-light-grey/70">
-                      <td className="py-3 font-semibold">{r.name}</td>
-                      <td className="py-3 text-medium-grey">{r.role}</td>
-                      <td className="py-3">{r.assigned}</td>
-                      <td className="py-3">{r.hot}</td>
-                      <td className="py-3">{r.calls}</td>
-                      <td className="py-3">{r.due}</td>
-                      <td className="py-3">{r.viewings}</td>
-                      <td className="py-3">{formatPkrCrore(r.pipeline)}</td>
-                      <td className="py-3">
-                        <span
-                          className={[
-                            "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold",
-                            r.badge === "Excellent"
-                              ? badgeClasses("success")
-                              : r.badge === "Active"
-                                ? badgeClasses("warning")
-                                : badgeClasses("slate"),
-                          ].join(" ")}
-                        >
-                          {r.badge}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="lg:col-span-4">
-            <MiniBarChart title="Advisor Pipeline Value (crore)" data={advisorPipelineChart} />
-          </div>
-        </section>
+      <div className="max-w-[1440px] mx-auto">
+        <AdminDashboardClient
+          updatedLabel={formatDateTime(now)}
+          kpis={kpis}
+          pipelineByStatus={pipelineByStatusChart}
+          sources={sourcesChart}
+          scoreDist={scoreDistChart}
+          revenueTrend={revenueTrendChart}
+          topHot={topHotRows}
+          followUps={followUpRows}
+          bookings={bookingRows}
+          aiOps={aiOps}
+          team={teamRows}
+          advisorPipeline={advisorPipelineChart}
+        />
       </div>
     </div>
   );
