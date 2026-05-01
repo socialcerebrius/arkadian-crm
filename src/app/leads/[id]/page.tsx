@@ -2,7 +2,8 @@ import Link from "next/link";
 import { OutboundAiCallButton } from "@/components/leads/OutboundAiCallButton";
 import { VapiBrowserTestButton } from "@/components/leads/VapiBrowserTestButton";
 import type { DemoLead } from "@/lib/demo-data";
-import { getLeadCallLogs } from "@/lib/get-lead-call-logs";
+import { getLatestBrowserTestForLead, getLeadCallLogs } from "@/lib/get-lead-call-logs";
+import { parseStoredBrowserTranscript } from "@/lib/vapi/parse-web-transcript-message";
 import { getRecentActivitiesForLead } from "@/lib/get-lead-activities";
 import { getLeadDetailById } from "@/lib/get-lead-detail";
 
@@ -27,10 +28,11 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [lead, activities, callLogs] = await Promise.all([
+  const [lead, activities, callLogs, latestBrowserTest] = await Promise.all([
     getLeadDetailById(id),
     getRecentActivitiesForLead(id, 12),
     getLeadCallLogs(id),
+    getLatestBrowserTestForLead(id),
   ]);
 
   if (!lead) {
@@ -54,17 +56,26 @@ export default async function LeadDetailPage({
     );
   }
 
-  return <LeadDetailContent lead={lead} activities={activities} callLogs={callLogs} />;
+  return (
+    <LeadDetailContent
+      lead={lead}
+      activities={activities}
+      callLogs={callLogs}
+      latestBrowserTest={latestBrowserTest}
+    />
+  );
 }
 
 function LeadDetailContent({
   lead,
   activities,
   callLogs,
+  latestBrowserTest,
 }: {
   lead: DemoLead;
   activities: Awaited<ReturnType<typeof getRecentActivitiesForLead>>;
   callLogs: Awaited<ReturnType<typeof getLeadCallLogs>>;
+  latestBrowserTest: Awaited<ReturnType<typeof getLatestBrowserTestForLead>>;
 }) {
   const created =
     lead.createdAtLabel ?? lead.updatedLabel ?? "—";
@@ -108,6 +119,7 @@ function LeadDetailContent({
               />
               <VapiBrowserTestButton
                 lead={lead}
+                persistCallLog={isDbLead}
                 vapiPublicKey={
                   process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY?.trim() ||
                   process.env.VAPI_PUBLIC_KEY?.trim() ||
@@ -194,6 +206,54 @@ function LeadDetailContent({
               )}
             </section>
           </div>
+
+          {isDbLead && latestBrowserTest ? (
+            <section className="rounded-xl border border-light-grey bg-white shadow-card p-6 h-fit">
+              <h2 className="font-(--font-display) text-lg text-navy">Latest AI browser test</h2>
+              <div className="mt-2 text-xs text-medium-grey space-y-0.5">
+                <div>{latestBrowserTest.startedAtLabel}</div>
+                {latestBrowserTest.endedAtLabel ? <div>Ended {latestBrowserTest.endedAtLabel}</div> : null}
+                <div className="font-medium text-navy">
+                  {latestBrowserTest.status.replaceAll("_", " ")}
+                  {latestBrowserTest.durationSeconds != null
+                    ? ` · ${latestBrowserTest.durationSeconds}s`
+                    : ""}
+                </div>
+              </div>
+              {latestBrowserTest.summary ? (
+                <p className="mt-3 text-xs text-medium-grey leading-relaxed">{latestBrowserTest.summary}</p>
+              ) : null}
+              <div className="mt-4 max-h-64 overflow-y-auto rounded-lg border border-light-grey bg-cream/20 p-3 text-xs text-navy leading-relaxed space-y-2">
+                {(() => {
+                  const lines = parseStoredBrowserTranscript(latestBrowserTest.transcript);
+                  if (lines && lines.length > 0) {
+                    return lines.map((line, i) => (
+                      <p key={`${line.role}-${i}`}>
+                        <span className="font-semibold text-medium-grey">
+                          {line.role === "assistant" ? "Assistant:" : "Prospect:"}
+                        </span>{" "}
+                        {line.text}
+                      </p>
+                    ));
+                  }
+                  if (latestBrowserTest.transcript?.trim()) {
+                    return (
+                      <p className="text-medium-grey whitespace-pre-wrap wrap-break-word">
+                        {latestBrowserTest.transcript.slice(0, 8000)}
+                        {latestBrowserTest.transcript.length > 8000 ? "…" : ""}
+                      </p>
+                    );
+                  }
+                  return (
+                    <p className="text-medium-grey">
+                      No transcript lines were stored yet. Run another browser test or check that the assistant
+                      emits client messages.
+                    </p>
+                  );
+                })()}
+              </div>
+            </section>
+          ) : null}
 
           <section className="rounded-xl border border-light-grey bg-white shadow-card p-6 h-fit">
             <h2 className="font-(--font-display) text-lg text-navy">Activity & follow-up</h2>

@@ -58,6 +58,7 @@ enum CallDirection {
 enum CallLogDirection {
   INBOUND
   OUTBOUND
+  BROWSER_TEST
 }
 
 enum Sentiment {
@@ -199,18 +200,19 @@ model Call {
 }
 
 model CallLog {
-  id           String           @id @default(uuid())
-  leadId       String           @map("lead_id")
-  vapiCallId   String?          @unique @map("vapi_call_id")
-  direction    CallLogDirection
-  status       String           @default("pending") @db.VarChar(100)
-  outcome      String?          @db.VarChar(500)
-  summary      String?          @db.Text
-  transcript   String?          @db.Text
-  recordingUrl String?          @map("recording_url")
-  transferred  Boolean          @default(false)
-  startedAt    DateTime?        @map("started_at")
-  endedAt      DateTime?        @map("ended_at")
+  id                String           @id @default(uuid())
+  leadId            String           @map("lead_id")
+  vapiCallId        String?          @unique @map("vapi_call_id")
+  direction         CallLogDirection
+  status            String           @default("pending") @db.VarChar(100)
+  outcome           String?          @db.VarChar(500)
+  summary           String?          @db.Text
+  transcript        String?          @db.Text
+  durationSeconds   Int?             @map("duration_seconds")
+  recordingUrl      String?          @map("recording_url")
+  transferred       Boolean          @default(false)
+  startedAt         DateTime?        @map("started_at")
+  endedAt           DateTime?        @map("ended_at")
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
 
