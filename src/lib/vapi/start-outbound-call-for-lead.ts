@@ -8,8 +8,8 @@
  */
 
 import { CallLogDirection } from "@prisma/client";
-import { budgetLabel } from "@/lib/get-lead-detail";
 import { prisma } from "@/lib/prisma";
+import { buildVapiLeadContext } from "@/lib/vapi-lead-context";
 
 const VAPI_CALL_URL = "https://api.vapi.ai/call";
 
@@ -146,24 +146,27 @@ export async function startOutboundCallForLead(
   const phoneNumberId = process.env.VAPI_PHONE_NUMBER_ID!.trim();
   const assistantId = process.env.VAPI_ASSISTANT_ID!.trim();
 
-  const budget = budgetLabel(lead.budgetMin, lead.budgetMax);
-  const unit = lead.preferredUnit?.replaceAll("_", " ") ?? "";
-  const view = lead.preferredView?.replaceAll("_", " ") ?? "";
-  const preferred = [unit, view].filter(Boolean).join(" · ") || "—";
   const emailStr = lead.email?.trim() ?? "";
 
-  const variableValues: Record<string, string> = {
-    leadId: lead.id,
-    callLogId: callLog.id,
+  // Keep Vapi variables minimal; assistant should confirm known CRM details.
+  const ctx = buildVapiLeadContext({
+    id: lead.id,
     name: lead.name,
-    phone,
-    email: emailStr,
-    source: String(lead.source).replaceAll("_", " "),
-    budget,
-    preferred,
-    urgency: String(lead.urgency).replaceAll("_", " "),
-    language: lead.language?.trim() || "en",
-    trigger: input.trigger,
+    budgetMin: lead.budgetMin,
+    budgetMax: lead.budgetMax,
+    preferredUnit: lead.preferredUnit ?? null,
+    preferredView: lead.preferredView ?? null,
+    urgency: lead.urgency,
+  });
+
+  const variableValues: Record<string, string> = {
+    leadId: ctx.leadId,
+    callLogId: callLog.id,
+    name: ctx.name,
+    propertyInterest: ctx.propertyInterest,
+    budgetText: ctx.budgetText,
+    buyingIntent: ctx.buyingIntent,
+    preferredView: ctx.preferredView,
   };
 
   const vapiPayload = {

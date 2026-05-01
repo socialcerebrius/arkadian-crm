@@ -6,7 +6,7 @@ import {
   serializeBrowserTranscript,
   type BrowserTranscriptLine,
 } from "@/lib/vapi/parse-web-transcript-message";
-import { formatBudget } from "@/lib/budget";
+import { buildVapiLeadContext } from "@/lib/vapi-lead-context";
 import Vapi from "@vapi-ai/web";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,27 +22,23 @@ function buildVariableValues(
   lead: DemoLead,
   extras?: { callLogId?: string },
 ): Record<string, string> {
-  const preferredParts = [unitLabel(lead.preferredUnit), lead.preferredView ? `${unitLabel(lead.preferredView)} view` : ""]
-    .filter(Boolean)
-    .join(" · ");
-  const base: Record<string, string> = {
-    leadId: lead.id,
+  const ctx = buildVapiLeadContext({
+    id: lead.id,
     name: lead.name,
-    phone: lead.phone ?? "",
-    email: lead.email ?? "",
-    budget: formatBudget(
-      lead.budgetMin != null ? BigInt(lead.budgetMin) : null,
-      lead.budgetMax != null ? BigInt(lead.budgetMax) : null,
-    ),
-    budgetMin: lead.budgetMin != null ? String(lead.budgetMin) : "",
-    budgetMax: lead.budgetMax != null ? String(lead.budgetMax) : "",
-    preferred: preferredParts || "—",
-    preferredUnit: lead.preferredUnit ?? "",
-    preferredView: lead.preferredView ?? "",
-    urgency: lead.urgency ?? "medium",
-    language: lead.language ?? "en",
-    source: lead.source,
-    trigger: "browser_test",
+    budgetMin: lead.budgetMin != null ? lead.budgetMin : null,
+    budgetMax: lead.budgetMax != null ? lead.budgetMax : null,
+    preferredUnit: lead.preferredUnit ?? null,
+    preferredView: lead.preferredView ?? null,
+    urgency: lead.urgency ?? null,
+  });
+
+  const base: Record<string, string> = {
+    leadId: ctx.leadId,
+    name: ctx.name,
+    propertyInterest: ctx.propertyInterest,
+    budgetText: ctx.budgetText,
+    buyingIntent: ctx.buyingIntent,
+    preferredView: ctx.preferredView,
   };
   if (extras?.callLogId) {
     base.callLogId = extras.callLogId;

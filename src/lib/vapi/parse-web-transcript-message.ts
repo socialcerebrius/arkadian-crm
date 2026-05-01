@@ -15,6 +15,7 @@ const PROMPT_SNIPPETS = [
   "Goal:",
   "Rules:",
   "Opening:",
+  "Known CRM details:",
 ] as const;
 
 function looksLikePromptText(text: string): boolean {

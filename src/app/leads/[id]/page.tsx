@@ -4,6 +4,7 @@ import { VapiBrowserTestButton } from "@/components/leads/VapiBrowserTestButton"
 import type { DemoLead } from "@/lib/demo-data";
 import { getLatestBrowserTestForLead, getLeadCallLogs } from "@/lib/get-lead-call-logs";
 import { cleanBrowserTranscriptLines, parseStoredBrowserTranscript } from "@/lib/vapi/parse-web-transcript-message";
+import { buildVapiLeadContext } from "@/lib/vapi-lead-context";
 import { getRecentActivitiesForLead } from "@/lib/get-lead-activities";
 import { getLeadDetailById } from "@/lib/get-lead-detail";
 
@@ -83,6 +84,16 @@ function LeadDetailContent({
   const isDbLead = LEAD_UUID_RE.test(lead.id);
   const hasPhone = Boolean(lead.phone?.trim());
   const canOutboundAi = isDbLead && hasPhone;
+  const vapiCtx = buildVapiLeadContext({
+    id: lead.id,
+    name: lead.name,
+    budgetMin: lead.budgetMin ?? null,
+    budgetMax: lead.budgetMax ?? null,
+    preferredUnit: lead.preferredUnit ?? null,
+    preferredView: lead.preferredView ?? null,
+    urgency: lead.urgency ?? null,
+  });
+  const ctxBits = [vapiCtx.propertyInterest, vapiCtx.budgetText].filter(Boolean);
   const outboundDisabledReason = !isDbLead
     ? "AI outbound calls are only available for prospects saved in the database."
     : !hasPhone
@@ -131,6 +142,11 @@ function LeadDetailContent({
                   null
                 }
               />
+              {ctxBits.length > 0 ? (
+                <span className="text-[11px] text-medium-grey">
+                  Using CRM context: {ctxBits.join(", ")}
+                </span>
+              ) : null}
               <Link
                 href={`/leads/${lead.id}/edit`}
                 className="rounded-lg border border-light-grey bg-white px-4 py-2.5 text-xs font-semibold tracking-[0.15em] uppercase text-navy hover:border-gold hover:bg-cream/40 transition-colors"
