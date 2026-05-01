@@ -87,7 +87,7 @@ export function mapApiLeadToPipelineLead(raw: ApiLeadListItem): PipelineLead {
     score,
     stage: normalizeToPipelineStage(raw.status),
     source: formatSourceLabel(raw.source),
-    budgetLabel: raw.budgetLabel || "PKR —",
+    budgetLabel: raw.budgetLabel || "Not set",
     budgetMin: raw.budgetMin,
     budgetMax: raw.budgetMax,
     phone: raw.phone,

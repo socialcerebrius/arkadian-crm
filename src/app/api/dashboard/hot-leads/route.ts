@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { demoLeads } from "@/lib/demo-data";
+import { formatBudget } from "@/lib/budget";
 
 function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
@@ -44,7 +45,7 @@ export async function GET() {
         source: l.source,
         status: l.status,
         score: l.score,
-        budgetLabel: budgetLabel(l.budgetMin, l.budgetMax),
+        budgetLabel: formatBudget(l.budgetMin, l.budgetMax),
         preferredUnit: l.preferredUnit ?? undefined,
         preferredView: l.preferredView ?? undefined,
         urgency: l.urgency,
@@ -59,14 +60,3 @@ export async function GET() {
     );
   }
 }
-
-function budgetLabel(min?: bigint | null, max?: bigint | null) {
-  if (!min && !max) return "PKR —";
-  const toCr = (n: bigint) => Number(n) / 10_000_000;
-  const minCr = min ? toCr(min) : undefined;
-  const maxCr = max ? toCr(max) : undefined;
-  if (minCr != null && maxCr != null) return `PKR ${minCr.toFixed(0)}–${maxCr.toFixed(0)}Cr`;
-  if (maxCr != null) return `Up to PKR ${maxCr.toFixed(0)}Cr`;
-  return `From PKR ${minCr?.toFixed(0)}Cr`;
-}
-

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { LeadStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { demoLeads, type DemoLead } from "@/lib/demo-data";
+import { formatBudget } from "@/lib/budget";
 
 /** Allow longer cold starts when connecting to remote Postgres from serverless (e.g. Vercel). */
 export const maxDuration = 30;
@@ -181,7 +182,7 @@ export async function GET(req: NextRequest) {
         score: l.score,
         budgetMin: l.budgetMin != null ? Number(l.budgetMin) : undefined,
         budgetMax: l.budgetMax != null ? Number(l.budgetMax) : undefined,
-        budgetLabel: budgetLabel(l.budgetMin, l.budgetMax),
+        budgetLabel: formatBudget(l.budgetMin, l.budgetMax),
         preferredUnit: l.preferredUnit ?? undefined,
         preferredView: l.preferredView ?? undefined,
         urgency: l.urgency,
@@ -283,15 +284,5 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
-}
-
-function budgetLabel(min?: bigint | null, max?: bigint | null) {
-  if (!min && !max) return "PKR —";
-  const toCr = (n: bigint) => Number(n) / 10_000_000;
-  const minCr = min ? toCr(min) : undefined;
-  const maxCr = max ? toCr(max) : undefined;
-  if (minCr != null && maxCr != null) return `PKR ${minCr.toFixed(0)}–${maxCr.toFixed(0)}Cr`;
-  if (maxCr != null) return `Up to PKR ${maxCr.toFixed(0)}Cr`;
-  return `From PKR ${minCr?.toFixed(0)}Cr`;
 }
 

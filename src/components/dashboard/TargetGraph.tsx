@@ -123,8 +123,8 @@ function formatPKR(value: number) {
   const crore = 10_000_000;
   const lakh = 100_000;
 
-  if (value >= crore) return `PKR ${(value / crore).toFixed(2)}Cr`;
-  if (value >= lakh) return `PKR ${(value / lakh).toFixed(1)}L`;
+  if (value >= crore) return `PKR ${(value / crore).toFixed(2)} crore`;
+  if (value >= lakh) return `PKR ${(value / lakh).toFixed(1)} lakh`;
   return `PKR ${Math.round(value).toLocaleString("en-PK")}`;
 }
 

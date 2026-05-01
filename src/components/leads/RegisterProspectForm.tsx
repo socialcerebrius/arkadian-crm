@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { parseBudgetInput, formatBudget } from "@/lib/budget";
 
 /** Optional override e.g. http://144.91.117.236:3001/api/leads — defaults to same-origin /api/leads. */
 function leadsPostUrl(): string {
@@ -49,8 +50,6 @@ const URGENCY_OPTIONS = [
 
 type UrgencyValue = (typeof URGENCY_OPTIONS)[number]["value"];
 
-const CR_TO_PKR = 10_000_000;
-
 type CreateLeadResponse = { data?: { id?: string } };
 
 function errorMessageFromJson(json: unknown): string {
@@ -83,8 +82,7 @@ export function RegisterProspectForm() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [source, setSource] = useState("walk_in");
-  const [budgetMinCr, setBudgetMinCr] = useState("");
-  const [budgetMaxCr, setBudgetMaxCr] = useState("");
+  const [budgetInput, setBudgetInput] = useState("");
   const [preferredUnit, setPreferredUnit] = useState("");
   const [preferredView, setPreferredView] = useState("");
   const [urgency, setUrgency] = useState<UrgencyValue>("medium");
@@ -112,14 +110,10 @@ export function RegisterProspectForm() {
       return;
     }
 
-    const parsedMin = budgetMinCr.trim() === "" ? undefined : Number(budgetMinCr);
-    const parsedMax = budgetMaxCr.trim() === "" ? undefined : Number(budgetMaxCr);
-    if (parsedMin !== undefined && (Number.isNaN(parsedMin) || parsedMin < 0)) {
-      setErrorMsg("Failed to save prospect: Budget min must be a valid crore amount.");
-      return;
-    }
-    if (parsedMax !== undefined && (Number.isNaN(parsedMax) || parsedMax < 0)) {
-      setErrorMsg("Failed to save prospect: Budget max must be a valid crore amount.");
+    const budgetTrim = budgetInput.trim();
+    const parsedBudget = budgetTrim ? parseBudgetInput(budgetTrim) : null;
+    if (budgetTrim && (!parsedBudget || (parsedBudget.budgetMin == null && parsedBudget.budgetMax == null))) {
+      setErrorMsg("Failed to save prospect: Please enter budget like 3 crore or 10-12 crore.");
       return;
     }
 
@@ -139,8 +133,8 @@ export function RegisterProspectForm() {
     const emailTrim = email.trim();
     if (emailTrim) formData.email = emailTrim;
 
-    if (parsedMin !== undefined) formData.budgetMin = Math.round(parsedMin * CR_TO_PKR);
-    if (parsedMax !== undefined) formData.budgetMax = Math.round(parsedMax * CR_TO_PKR);
+    if (parsedBudget?.budgetMin != null) formData.budgetMin = Number(parsedBudget.budgetMin);
+    if (parsedBudget?.budgetMax != null) formData.budgetMax = Number(parsedBudget.budgetMax);
 
     if (preferredUnit) formData.preferredUnit = preferredUnit;
     if (preferredView) formData.preferredView = preferredView;
@@ -302,32 +296,26 @@ export function RegisterProspectForm() {
 
           <label className="block">
             <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
-              Budget min (PKR Cr)
+              Budget
             </span>
             <input
               className={fieldClass}
-              inputMode="decimal"
-              value={budgetMinCr}
-              onChange={(e) => setBudgetMinCr(e.target.value)}
-              placeholder="e.g. 3"
-              name="prospectBudgetMin"
+              value={budgetInput}
+              onChange={(e) => setBudgetInput(e.target.value)}
+              placeholder="e.g. 3 crore, 10-12 crore, 80-150 crore"
+              name="prospectBudget"
               disabled={fieldDisabled}
             />
-          </label>
-
-          <label className="block">
-            <span className="text-xs tracking-[0.2em] uppercase text-medium-grey">
-              Budget max (PKR Cr)
+            <span className="mt-1 block text-[11px] text-medium-grey/80">
+              Saved as:{" "}
+              {(() => {
+                const t = budgetInput.trim();
+                if (!t) return "Not set";
+                const p = parseBudgetInput(t);
+                if (p.budgetMin == null && p.budgetMax == null) return "—";
+                return formatBudget(p.budgetMin, p.budgetMax);
+              })()}
             </span>
-            <input
-              className={fieldClass}
-              inputMode="decimal"
-              value={budgetMaxCr}
-              onChange={(e) => setBudgetMaxCr(e.target.value)}
-              placeholder="e.g. 8"
-              name="prospectBudgetMax"
-              disabled={fieldDisabled}
-            />
           </label>
 
           <label className="block">

@@ -6,6 +6,7 @@ import {
   serializeBrowserTranscript,
   type BrowserTranscriptLine,
 } from "@/lib/vapi/parse-web-transcript-message";
+import { formatBudget } from "@/lib/budget";
 import Vapi from "@vapi-ai/web";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -29,7 +30,10 @@ function buildVariableValues(
     name: lead.name,
     phone: lead.phone ?? "",
     email: lead.email ?? "",
-    budget: lead.budgetLabel,
+    budget: formatBudget(
+      lead.budgetMin != null ? BigInt(lead.budgetMin) : null,
+      lead.budgetMax != null ? BigInt(lead.budgetMax) : null,
+    ),
     budgetMin: lead.budgetMin != null ? String(lead.budgetMin) : "",
     budgetMax: lead.budgetMax != null ? String(lead.budgetMax) : "",
     preferred: preferredParts || "—",

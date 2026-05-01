@@ -1,18 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getLeadById, type DemoLead } from "@/lib/demo-data";
+import { formatBudget } from "@/lib/budget";
 
 function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
 }
 
 export function budgetLabel(min?: bigint | null, max?: bigint | null) {
-  if (!min && !max) return "PKR —";
-  const toCr = (n: bigint) => Number(n) / 10_000_000;
-  const minCr = min ? toCr(min) : undefined;
-  const maxCr = max ? toCr(max) : undefined;
-  if (minCr != null && maxCr != null) return `PKR ${minCr.toFixed(0)}–${maxCr.toFixed(0)}Cr`;
-  if (maxCr != null) return `Up to PKR ${maxCr.toFixed(0)}Cr`;
-  return `From PKR ${minCr?.toFixed(0)}Cr`;
+  return formatBudget(min ?? null, max ?? null);
 }
 
 /**

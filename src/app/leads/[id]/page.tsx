@@ -3,7 +3,7 @@ import { OutboundAiCallButton } from "@/components/leads/OutboundAiCallButton";
 import { VapiBrowserTestButton } from "@/components/leads/VapiBrowserTestButton";
 import type { DemoLead } from "@/lib/demo-data";
 import { getLatestBrowserTestForLead, getLeadCallLogs } from "@/lib/get-lead-call-logs";
-import { parseStoredBrowserTranscript } from "@/lib/vapi/parse-web-transcript-message";
+import { cleanBrowserTranscriptLines, parseStoredBrowserTranscript } from "@/lib/vapi/parse-web-transcript-message";
 import { getRecentActivitiesForLead } from "@/lib/get-lead-activities";
 import { getLeadDetailById } from "@/lib/get-lead-detail";
 
@@ -225,7 +225,8 @@ function LeadDetailContent({
               ) : null}
               <div className="mt-4 max-h-64 overflow-y-auto rounded-lg border border-light-grey bg-cream/20 p-3 text-xs text-navy leading-relaxed space-y-2">
                 {(() => {
-                  const lines = parseStoredBrowserTranscript(latestBrowserTest.transcript);
+                  const parsed = parseStoredBrowserTranscript(latestBrowserTest.transcript);
+                  const lines = parsed ? cleanBrowserTranscriptLines(parsed) : null;
                   if (lines && lines.length > 0) {
                     return lines.map((line, i) => (
                       <p key={`${line.role}-${i}`}>

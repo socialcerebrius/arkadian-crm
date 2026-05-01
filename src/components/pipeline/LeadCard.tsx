@@ -2,20 +2,16 @@ import Link from "next/link";
 import { UserRound } from "lucide-react";
 import { PIPELINE_STAGES, scoreBadgeClasses } from "./constants";
 import type { PipelineLead } from "./types";
-
-const CR = 10_000_000;
-
-function budgetDetail(min?: number, max?: number): string | null {
-  if (min == null && max == null) return null;
-  const fmt = (n: number) => `${(n / CR).toFixed(0)} Cr`;
-  if (min != null && max != null) return `PKR ${fmt(min)} – ${fmt(max)}`;
-  if (max != null) return `Up to PKR ${fmt(max)}`;
-  if (min != null) return `From PKR ${fmt(min)}`;
-  return null;
-}
+import { formatBudget } from "@/lib/budget";
 
 export function LeadCard({ lead }: { lead: PipelineLead }) {
-  const budgetExtra = budgetDetail(lead.budgetMin, lead.budgetMax);
+  const budgetExtra =
+    lead.budgetMin != null || lead.budgetMax != null
+      ? formatBudget(
+          lead.budgetMin != null ? BigInt(lead.budgetMin) : null,
+          lead.budgetMax != null ? BigInt(lead.budgetMax) : null,
+        )
+      : null;
   const contact = [lead.phone, lead.email].filter(Boolean).join(" · ");
   const stageLabel =
     PIPELINE_STAGES.find((s) => s.key === lead.stage)?.label ??
@@ -52,7 +48,7 @@ export function LeadCard({ lead }: { lead: PipelineLead }) {
         <div className="mt-1 text-xs font-medium text-navy/70">Stage: {stageLabel}</div>
 
         {contact ? (
-          <div className="mt-2 text-xs text-medium-grey break-words">{contact}</div>
+          <div className="mt-2 text-xs text-medium-grey wrap-break-word">{contact}</div>
         ) : null}
 
         <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-sm text-medium-grey">

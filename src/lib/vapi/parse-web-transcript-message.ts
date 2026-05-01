@@ -8,6 +8,57 @@ export type BrowserTranscriptLine = {
   text: string;
 };
 
+const PROMPT_SNIPPETS = [
+  "# Appointment Scheduling Agent Prompt",
+  "Identity & Purpose",
+  "You are Layla",
+  "Goal:",
+  "Rules:",
+  "Opening:",
+] as const;
+
+function looksLikePromptText(text: string): boolean {
+  const t = text.toLowerCase();
+  return PROMPT_SNIPPETS.some((s) => t.includes(s.toLowerCase()));
+}
+
+/**
+ * Removes assistant prompt/config blocks and leading non-conversation noise.
+ * Conservative: better to drop prompt text than leak it into CRM.
+ */
+export function cleanBrowserTranscriptLines(lines: BrowserTranscriptLine[]): BrowserTranscriptLine[] {
+  const withoutPrompt = lines.filter((l) => {
+    if (l.role !== "assistant") return true;
+    return !looksLikePromptText(l.text);
+  });
+
+  // Drop leading assistant-only "setup" until the first prospect turn (or first short assistant greeting).
+  let startIdx = 0;
+  for (let i = 0; i < withoutPrompt.length; i++) {
+    const l = withoutPrompt[i];
+    if (l.role === "prospect") {
+      startIdx = Math.max(0, i - 1);
+      break;
+    }
+    if (l.role === "assistant" && l.text.length <= 240 && !looksLikePromptText(l.text)) {
+      startIdx = i;
+      break;
+    }
+    startIdx = i + 1;
+  }
+
+  const trimmed = withoutPrompt.slice(startIdx);
+
+  // Collapse exact duplicates.
+  const out: BrowserTranscriptLine[] = [];
+  for (const l of trimmed) {
+    const prev = out[out.length - 1];
+    if (prev && prev.role === l.role && prev.text === l.text) continue;
+    out.push(l);
+  }
+  return out;
+}
+
 function mapRole(raw: unknown): "assistant" | "prospect" | null {
   if (typeof raw !== "string") return null;
   const r = raw.toLowerCase();
