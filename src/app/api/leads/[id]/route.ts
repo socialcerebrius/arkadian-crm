@@ -7,6 +7,18 @@ const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
   phone: z.string().optional().nullable(),
   email: z.string().email().optional().nullable(),
+  source: z
+    .enum([
+      "website_voice",
+      "website_form",
+      "website_game",
+      "phone",
+      "referral",
+      "broker",
+      "walk_in",
+      "social_media",
+    ])
+    .optional(),
   status: z
     .enum([
       "new",
@@ -25,6 +37,7 @@ const updateLeadSchema = z.object({
     .nullable(),
   preferredView: z.enum(["sea", "golf", "city", "dual"]).optional().nullable(),
   urgency: z.enum(["low", "medium", "high", "immediate"]).optional(),
+  language: z.string().max(10).optional(),
   notes: z.string().optional().nullable(),
 });
 
@@ -96,6 +109,7 @@ export async function PATCH(
         name: body.name,
         phone: body.phone === undefined ? undefined : body.phone,
         email: body.email === undefined ? undefined : body.email,
+        source: body.source,
         status: body.status,
         budgetMin:
           body.budgetMin === undefined
@@ -112,6 +126,7 @@ export async function PATCH(
         preferredUnit: body.preferredUnit === undefined ? undefined : body.preferredUnit,
         preferredView: body.preferredView === undefined ? undefined : body.preferredView,
         urgency: body.urgency,
+        language: body.language,
         notes: body.notes === undefined ? undefined : body.notes,
       },
     });

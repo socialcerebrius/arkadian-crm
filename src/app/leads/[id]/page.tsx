@@ -132,7 +132,7 @@ function LeadDetailContent({
                 }
               />
               <Link
-                href="#profile"
+                href={`/leads/${lead.id}/edit`}
                 className="rounded-lg border border-light-grey bg-white px-4 py-2.5 text-xs font-semibold tracking-[0.15em] uppercase text-navy hover:border-gold hover:bg-cream/40 transition-colors"
               >
                 Edit Prospect
