@@ -245,6 +245,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Outbound Vapi calls are manual (prospect page) or explicit jobs; see startOutboundCallForLead.
+
     return NextResponse.json({ data: { id: lead.id } }, { status: 201 });
   } catch (e) {
     console.error("POST /api/leads", e);
