@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { OutboundAiCallButton } from "@/components/leads/OutboundAiCallButton";
 import { VapiBrowserTestButton } from "@/components/leads/VapiBrowserTestButton";
+import { ProspectIntelligenceCard } from "@/components/leads/ProspectIntelligenceCard";
 import type { DemoLead } from "@/lib/demo-data";
 import { getLatestBrowserTestForLead, getLeadCallLogs } from "@/lib/get-lead-call-logs";
 import { cleanBrowserTranscriptLines, parseStoredBrowserTranscript } from "@/lib/vapi/parse-web-transcript-message";
 import { buildVapiLeadContext } from "@/lib/vapi-lead-context";
 import { getRecentActivitiesForLead } from "@/lib/get-lead-activities";
 import { getLeadDetailById } from "@/lib/get-lead-detail";
+import { scoreProspect } from "@/lib/prospect-scoring";
 
 const LEAD_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -94,6 +96,29 @@ function LeadDetailContent({
     urgency: lead.urgency ?? null,
   });
   const ctxBits = [vapiCtx.propertyInterest, vapiCtx.budgetText].filter(Boolean);
+
+  const latestActivity = activities[0] ?? null;
+  const intelligence = scoreProspect(
+    {
+      name: lead.name,
+      budgetMin: lead.budgetMin ?? null,
+      budgetMax: lead.budgetMax ?? null,
+      urgency: lead.urgency ?? null,
+      preferredUnit: lead.preferredUnit ?? null,
+      preferredView: lead.preferredView ?? null,
+      notes: lead.notes ?? null,
+    },
+    latestBrowserTest,
+    latestActivity,
+  );
+
+  const callbackTextFromSummary =
+    latestBrowserTest?.summary?.match(/Callback confirmed:\s*([^.]*)/i)?.[1]?.trim() ?? "";
+  const callbackText = latestActivity?.dueLabel
+    ? `at ${latestActivity.dueLabel}`
+    : callbackTextFromSummary
+      ? callbackTextFromSummary
+      : "";
   const outboundDisabledReason = !isDbLead
     ? "AI outbound calls are only available for prospects saved in the database."
     : !hasPhone
@@ -167,6 +192,17 @@ function LeadDetailContent({
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
           <div className="space-y-8 min-w-0">
+            <ProspectIntelligenceCard
+              score={intelligence.score}
+              label={intelligence.label}
+              reasons={intelligence.reasons}
+              recommendedAction={intelligence.recommendedAction}
+              leadName={lead.name}
+              propertyInterest={vapiCtx.propertyInterest}
+              budgetText={vapiCtx.budgetText || lead.budgetLabel}
+              callbackText={callbackText}
+            />
+
             <section id="profile" className="rounded-xl border border-light-grey bg-white shadow-card p-6">
               <h2 className="font-(--font-display) text-lg text-navy">Profile</h2>
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">

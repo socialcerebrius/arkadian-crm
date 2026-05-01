@@ -36,6 +36,7 @@ export type DemoLead = {
   createdAtLabel?: string;
   updatedAtLabel?: string;
   lastCallAtLabel?: string;
+  notes?: string;
 };
 
 export type DemoCall = {
