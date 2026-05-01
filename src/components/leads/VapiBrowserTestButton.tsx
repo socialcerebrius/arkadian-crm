@@ -39,6 +39,10 @@ function buildVariableValues(
     budgetText: ctx.budgetText,
     buyingIntent: ctx.buyingIntent,
     preferredView: ctx.preferredView,
+    currentDate: ctx.currentDate,
+    currentTime: ctx.currentTime,
+    currentDateTime: ctx.currentDateTime,
+    timezone: ctx.timezone,
   };
   if (extras?.callLogId) {
     base.callLogId = extras.callLogId;

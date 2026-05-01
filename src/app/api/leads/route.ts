@@ -4,6 +4,7 @@ import { LeadStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { demoLeads, type DemoLead } from "@/lib/demo-data";
 import { formatBudget } from "@/lib/budget";
+import { formatDateTime } from "@/lib/datetime";
 
 /** Allow longer cold starts when connecting to remote Postgres from serverless (e.g. Vercel). */
 export const maxDuration = 30;
@@ -151,6 +152,8 @@ export async function GET(req: NextRequest) {
           preferredView: true,
           urgency: true,
           language: true,
+          lastCallAt: true,
+          createdAt: true,
           updatedAt: true,
         },
       }),
@@ -188,6 +191,9 @@ export async function GET(req: NextRequest) {
         urgency: l.urgency,
         language: l.language,
         updatedLabel: "Recently",
+        updatedAtLabel: formatDateTime(l.updatedAt),
+        createdAtLabel: formatDateTime(l.createdAt),
+        lastCallAtLabel: l.lastCallAt ? formatDateTime(l.lastCallAt) : undefined,
       })),
       meta: { total, page, limit },
     });

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { demoActivities } from "@/lib/demo-data";
+import { formatDateTime } from "@/lib/datetime";
 
 export type LeadActivityRow = {
   id: string;
@@ -52,12 +53,7 @@ export async function getRecentActivitiesForLead(
     type: r.type.replaceAll("_", " "),
     title: r.title,
     status: r.status.replaceAll("_", " "),
-    createdLabel: r.createdAt.toLocaleString("en-GB", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }),
-    dueLabel: r.dueAt
-      ? r.dueAt.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
-      : null,
+    createdLabel: formatDateTime(r.createdAt),
+    dueLabel: r.dueAt ? formatDateTime(r.dueAt) : null,
   }));
 }

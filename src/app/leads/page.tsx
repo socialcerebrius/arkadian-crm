@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { DemoLead } from "@/lib/demo-data";
 import { headers } from "next/headers";
+import { formatDateTime } from "@/lib/datetime";
 
 function scoreClass(score: number) {
   if (score >= 90) return "bg-success ring-2 ring-gold text-white";
@@ -84,6 +85,11 @@ export default async function LeadsPage() {
                     <div className="text-sm text-medium-grey">
                       {lead.budgetLabel}
                     </div>
+                    {lead.lastCallAtLabel ? (
+                      <div className="mt-0.5 text-[11px] text-medium-grey/90">
+                        Last AI call: {lead.lastCallAtLabel}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="col-span-2">
                     <span
@@ -102,7 +108,7 @@ export default async function LeadsPage() {
                     {lead.source.replaceAll("_", " ")}
                   </div>
                   <div className="col-span-2 text-sm text-medium-grey">
-                    {lead.updatedLabel}
+                    {lead.updatedAtLabel ?? lead.createdAtLabel ?? lead.updatedLabel ?? "—"}
                   </div>
                 </div>
               </Link>

@@ -167,6 +167,10 @@ export async function startOutboundCallForLead(
     budgetText: ctx.budgetText,
     buyingIntent: ctx.buyingIntent,
     preferredView: ctx.preferredView,
+    currentDate: ctx.currentDate,
+    currentTime: ctx.currentTime,
+    currentDateTime: ctx.currentDateTime,
+    timezone: ctx.timezone,
   };
 
   const vapiPayload = {

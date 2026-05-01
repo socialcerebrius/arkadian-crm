@@ -35,6 +35,7 @@ export type DemoLead = {
   /** Formatted labels when available (e.g. from DB). */
   createdAtLabel?: string;
   updatedAtLabel?: string;
+  lastCallAtLabel?: string;
 };
 
 export type DemoCall = {

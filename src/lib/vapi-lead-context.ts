@@ -1,4 +1,5 @@
 import { formatBudgetInput, parseBudgetInput } from "@/lib/budget";
+import { DEFAULT_TZ, formatDateOnly, formatDateTime12, formatTime12 } from "@/lib/datetime";
 
 type LeadLike = {
   id: string;
@@ -17,6 +18,10 @@ export type VapiLeadContext = {
   budgetText: string;
   buyingIntent: string;
   preferredView: string;
+  currentDate: string;
+  currentTime: string;
+  currentDateTime: string;
+  timezone: string;
 };
 
 function toBigIntOrNull(v: bigint | number | null | undefined): bigint | null {
@@ -92,7 +97,12 @@ function budgetToBudgetText(min: bigint | null, max: bigint | null): string {
   return text ? `up to PKR ${text}` : "";
 }
 
-export function buildVapiLeadContext(lead: LeadLike): VapiLeadContext {
+export function buildVapiLeadContext(
+  lead: LeadLike,
+  options?: { now?: Date; timeZone?: string },
+): VapiLeadContext {
+  const now = options?.now ?? new Date();
+  const timeZone = options?.timeZone ?? DEFAULT_TZ;
   const min = toBigIntOrNull(lead.budgetMin);
   const max = toBigIntOrNull(lead.budgetMax);
 
@@ -103,6 +113,10 @@ export function buildVapiLeadContext(lead: LeadLike): VapiLeadContext {
     budgetText: budgetToBudgetText(min, max),
     buyingIntent: urgencyToBuyingIntent(lead.urgency),
     preferredView: viewToPreferredView(lead.preferredView),
+    currentDate: formatDateOnly(now, timeZone),
+    currentTime: formatTime12(now, timeZone),
+    currentDateTime: formatDateTime12(now, timeZone),
+    timezone: timeZone,
   };
 }
 

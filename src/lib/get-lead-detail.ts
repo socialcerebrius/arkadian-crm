@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getLeadById, type DemoLead } from "@/lib/demo-data";
 import { formatBudget } from "@/lib/budget";
+import { formatDateTime } from "@/lib/datetime";
 
 function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
@@ -56,13 +57,7 @@ export async function getLeadDetailById(id: string): Promise<DemoLead | null> {
     urgency: lead.urgency,
     language: lead.language,
     updatedLabel: "Recently",
-    createdAtLabel: lead.createdAt.toLocaleString("en-GB", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }),
-    updatedAtLabel: lead.updatedAt.toLocaleString("en-GB", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }),
+    createdAtLabel: formatDateTime(lead.createdAt),
+    updatedAtLabel: formatDateTime(lead.updatedAt),
   };
 }
