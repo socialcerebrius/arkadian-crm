@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArkLogo } from "@/components/shared/ArkLogo";
+import type { SessionUser } from "@/lib/auth";
 
 type NavItem = {
   href: string;
@@ -20,8 +21,10 @@ const navItems: NavItem[] = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ sessionUser }: { sessionUser: SessionUser | null }) {
   const pathname = usePathname();
+  const isAdmin = (sessionUser?.role ?? "").toLowerCase() === "admin";
+  const items = isAdmin ? [...navItems, { href: "/admin", label: "Admin" }] : navItems;
 
   return (
     <aside className="hidden lg:flex w-[280px] shrink-0 bg-white relative border-r border-light-grey">
@@ -41,7 +44,7 @@ export function Sidebar() {
         </div>
 
         <nav className="px-3 py-4 flex flex-col gap-1">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

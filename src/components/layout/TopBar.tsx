@@ -1,17 +1,20 @@
 import { LogoutButton } from "./LogoutButton";
+import { usePathname } from "next/navigation";
 
 export function TopBar({
   user,
 }: {
   user: { name: string; email: string } | null;
 }) {
+  const pathname = usePathname();
+  const title = pathname.startsWith("/admin") ? "Arkadians Command Centre" : "The Arkadians Client Portfolio";
   return (
     <header className="sticky top-0 z-30 w-full bg-white/85 backdrop-blur border-b border-light-grey">
       <div className="h-16 px-5 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="lg:hidden w-9 h-9 rounded-full bg-cream border border-light-grey" />
           <div className="text-navy font-semibold tracking-tight text-base sm:text-lg">
-            The Arkadians Client Portfolio
+            {title}
           </div>
         </div>
         <div className="flex items-center gap-3">

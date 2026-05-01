@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { SessionUser } from "@/lib/auth";
 
 type NavItem = { href: string; label: string };
 
@@ -16,8 +17,10 @@ const navItems: NavItem[] = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function MobileNav() {
+export function MobileNav({ sessionUser }: { sessionUser: SessionUser | null }) {
   const [open, setOpen] = useState(false);
+  const isAdmin = (sessionUser?.role ?? "").toLowerCase() === "admin";
+  const items = isAdmin ? [...navItems, { href: "/admin", label: "Admin" }] : navItems;
 
   return (
     <div className="lg:hidden">
@@ -55,7 +58,7 @@ export function MobileNav() {
             </div>
 
             <nav className="px-3 py-4 flex flex-col gap-1">
-              {navItems.map((item) => (
+              {items.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { DemoCall, DemoLead } from "@/lib/demo-data";
 import { headers } from "next/headers";
+import { getSession } from "@/lib/auth";
 
 type DashboardStats = {
   totalLeads: number;
@@ -115,6 +116,7 @@ async function getDashboardStats(baseUrl: string): Promise<DashboardStats | null
 
 export default async function Home() {
   const baseUrl = await getBaseUrl();
+  const session = await getSession();
   const [stats, hotLeads, recentCalls, pipelineCounts] = await Promise.all([
     getDashboardStats(baseUrl),
     getDashboardHotLeads(baseUrl),
@@ -145,7 +147,7 @@ export default async function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <MobileNav />
+            <MobileNav sessionUser={session} />
             <Link
               href="/leads/new"
               className="rounded px-5 py-3 text-xs font-semibold tracking-[0.2em] uppercase text-white bg-[linear-gradient(135deg,#0A1628,#1a2c4e)] hover:shadow-[0_4px_15px_rgba(10,22,40,0.30)] transition-shadow"

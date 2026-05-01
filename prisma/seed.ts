@@ -9,6 +9,7 @@ const SEED_EMAIL_DOMAIN = "seed.arkadians.local";
 
 async function main() {
   const passwordHash = await bcrypt.hash(SEED_USER_PASSWORD, 10);
+  const adminPasswordHash = await bcrypt.hash("ArkadiansDemo2026!", 10);
 
   await prisma.lead.deleteMany({
     where: { email: { endsWith: `@${SEED_EMAIL_DOMAIN}` } },
@@ -27,6 +28,23 @@ async function main() {
       email: "ahmad@arkadians.local",
       passwordHash,
       role: "manager",
+      status: "active",
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "admin@arkadians.local" },
+    update: {
+      name: "Arkadians Admin",
+      role: "admin",
+      status: "active",
+      passwordHash: adminPasswordHash,
+    },
+    create: {
+      name: "Arkadians Admin",
+      email: "admin@arkadians.local",
+      passwordHash: adminPasswordHash,
+      role: "admin",
       status: "active",
     },
   });

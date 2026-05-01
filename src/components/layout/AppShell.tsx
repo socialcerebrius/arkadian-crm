@@ -22,7 +22,7 @@ export function AppShell({
 
   return (
     <div className="min-h-full flex">
-      <Sidebar />
+      <Sidebar sessionUser={sessionUser} />
       <div className="flex-1 min-w-0 flex flex-col">
         <TopBar
           user={sessionUser ? { name: sessionUser.name, email: sessionUser.email } : null}

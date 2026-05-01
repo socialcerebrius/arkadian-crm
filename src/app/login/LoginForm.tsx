@@ -172,9 +172,11 @@ export function LoginForm() {
               <div className="text-center text-[11px] text-white/70 leading-relaxed">
                 Demo:{" "}
                 <span className="font-medium text-white">ahmad@arkadians.local</span>,{" "}
-                <span className="font-medium text-white">sara@arkadians.local</span>
+                <span className="font-medium text-white">sara@arkadians.local</span>,{" "}
+                <span className="font-medium text-white">admin@arkadians.local</span>
                 <br />
-                Password: <span className="font-mono text-white">Welcome1!</span>
+                Password: <span className="font-mono text-white">Welcome1!</span> (admin:{" "}
+                <span className="font-mono text-white">ArkadiansDemo2026!</span>)
               </div>
             </div>
           </div>
