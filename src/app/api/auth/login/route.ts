@@ -9,6 +9,9 @@ import {
   SEED_USER_PASSWORD,
 } from "@/lib/seed-auth";
 
+const DEMO_ADMIN_EMAIL = "admin@arkadians.local";
+const DEMO_ADMIN_PASSWORD = "ArkadiansDemo2026!";
+
 const bodySchema = z.object({
   email: z.string().email(),
   password: z
@@ -30,6 +33,49 @@ export async function POST(req: Request) {
 
     const { email, password } = parsed.data;
     const normalizedEmail = email.trim().toLowerCase();
+
+    // Demo admin convenience: if the DB was not re-seeded, allow the demo admin
+    // credentials to create/activate the user on demand.
+    if (normalizedEmail === DEMO_ADMIN_EMAIL && password === DEMO_ADMIN_PASSWORD) {
+      const adminPasswordHash = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 10);
+      const adminUser = await prisma.user.upsert({
+        where: { email: DEMO_ADMIN_EMAIL },
+        update: {
+          name: "Arkadians Admin",
+          role: "admin",
+          status: "active",
+          passwordHash: adminPasswordHash,
+        },
+        create: {
+          name: "Arkadians Admin",
+          email: DEMO_ADMIN_EMAIL,
+          passwordHash: adminPasswordHash,
+          role: "admin",
+          status: "active",
+        },
+      });
+
+      const token = await createSessionToken({
+        userId: adminUser.id,
+        email: adminUser.email,
+        name: adminUser.name,
+        role: adminUser.role,
+      });
+
+      const res = NextResponse.json({
+        data: { email: adminUser.email, name: adminUser.name },
+      });
+
+      res.cookies.set(SESSION_COOKIE_NAME, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.COOKIE_SECURE === "true",
+        path: "/",
+        maxAge: SESSION_MAX_AGE_SEC,
+      });
+
+      return res;
+    }
 
     const user = await prisma.user.findFirst({
       where: {
