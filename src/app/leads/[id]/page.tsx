@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OutboundAiCallButton } from "@/components/leads/OutboundAiCallButton";
+import { VapiBrowserTestButton } from "@/components/leads/VapiBrowserTestButton";
 import type { DemoLead } from "@/lib/demo-data";
 import { getLeadCallLogs } from "@/lib/get-lead-call-logs";
 import { getRecentActivitiesForLead } from "@/lib/get-lead-activities";
@@ -104,6 +105,19 @@ function LeadDetailContent({
                 leadId={lead.id}
                 disabled={!canOutboundAi}
                 disabledReason={outboundDisabledReason}
+              />
+              <VapiBrowserTestButton
+                lead={lead}
+                vapiPublicKey={
+                  process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY?.trim() ||
+                  process.env.VAPI_PUBLIC_KEY?.trim() ||
+                  null
+                }
+                vapiAssistantId={
+                  process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID?.trim() ||
+                  process.env.VAPI_ASSISTANT_ID?.trim() ||
+                  null
+                }
               />
               <Link
                 href="#profile"

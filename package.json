@@ -20,6 +20,7 @@
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@prisma/client": "^5.22.0",
+    "@vapi-ai/web": "^2.5.2",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.3",
     "lucide-react": "^1.11.0",
