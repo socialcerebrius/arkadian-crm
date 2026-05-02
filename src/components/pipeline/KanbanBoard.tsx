@@ -61,13 +61,14 @@ function rebuildLeadsAfterDrag(leads: PipelineLead[], result: DropResult): Pipel
   return PIPELINE_STAGES.flatMap((s) => grouped[s.key]);
 }
 
-const LEADS_URL = "/api/leads?limit=100&page=1";
-
 type KanbanBoardProps = {
   initialLeads: PipelineLead[];
+  leadsUrl: string;
+  sessionUserId: string | null;
+  sessionRole: string | null;
 };
 
-export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
+export function KanbanBoard({ initialLeads, leadsUrl, sessionUserId, sessionRole }: KanbanBoardProps) {
   const [leads, setLeads] = useState<PipelineLead[]>(initialLeads);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -81,7 +82,7 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
     ) => {
       console.log("Fetching leads…");
       setFetchError(null);
-      const res = await fetch(LEADS_URL, {
+      const res = await fetch(leadsUrl, {
         cache: "no-store",
         signal,
         credentials: "same-origin",
@@ -278,6 +279,8 @@ export function KanbanBoard({ initialLeads }: KanbanBoardProps) {
                 title={stage.label}
                 topBorderClass={stage.topBorderClass}
                 leads={grouped[stage.key]}
+                sessionUserId={sessionUserId}
+                sessionRole={sessionRole}
               />
             ))}
           </div>

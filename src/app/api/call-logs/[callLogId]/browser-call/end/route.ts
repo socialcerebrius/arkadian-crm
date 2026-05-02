@@ -98,7 +98,7 @@ export async function PATCH(
 
     const lead = await prisma.lead.findFirst({
       where: { id: body.leadId, deletedAt: null },
-      select: { id: true, name: true, notes: true, budgetMin: true, budgetMax: true, preferredUnit: true, urgency: true, status: true },
+      select: { id: true, name: true, notes: true, budgetMin: true, budgetMax: true, preferredUnit: true, urgency: true, status: true, ownerId: true },
     });
 
     const extracted = cleanedTranscript
@@ -189,6 +189,7 @@ export async function PATCH(
               title: activityTitle,
               notes: activityNotes,
               dueAt: extracted.callbackAt ?? null,
+                  userId: lead.ownerId ?? null,
               completedAt: null,
             },
           });

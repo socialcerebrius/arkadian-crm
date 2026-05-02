@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { KanbanBoard } from "@/components/pipeline/KanbanBoard";
 import type { PipelineLead } from "@/components/pipeline/types";
 import {
   mapApiLeadToPipelineLead,
   type ApiLeadListItem,
 } from "@/lib/map-lead-to-pipeline";
+import { getSession } from "@/lib/auth";
 
 async function getBaseUrl() {
   const h = await headers();
@@ -39,6 +41,12 @@ async function getInitialPipelineLeads(): Promise<PipelineLead[]> {
 }
 
 export default async function PipelinePage() {
+  const session = await getSession();
+  const isAdmin = (session?.role ?? "").toLowerCase() === "admin";
+  // Sales users default to their own board for focus.
+  if (session && !isAdmin) {
+    redirect("/pipeline/my-board");
+  }
   const initialLeads = await getInitialPipelineLeads();
   const boardKey =
     initialLeads.length === 0
@@ -70,7 +78,13 @@ export default async function PipelinePage() {
         </div>
 
         <div className="mt-8">
-          <KanbanBoard key={boardKey} initialLeads={initialLeads} />
+          <KanbanBoard
+            key={boardKey}
+            initialLeads={initialLeads}
+            leadsUrl="/api/leads?limit=100&page=1"
+            sessionUserId={session?.userId ?? null}
+            sessionRole={session?.role ?? null}
+          />
         </div>
       </div>
     </div>

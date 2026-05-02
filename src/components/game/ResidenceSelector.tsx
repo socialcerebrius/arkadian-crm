@@ -1,7 +1,10 @@
 "use client";
 
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+const BUYER_GAME_UNLOCK_KEY = "arkadians_buyer_game_unlocked";
 
 type Step =
   | "lifestyle"
@@ -98,9 +101,23 @@ function OptionGrid({
   );
 }
 
-export function ResidenceSelector() {
+export function ResidenceSelector({
+  playBasePath = "/game/play",
+}: {
+  /** Where “Enter 3D experience” links (e.g. `/experience/play` for public share link). */
+  playBasePath?: string;
+} = {}) {
   const [step, setStep] = useState<Step>("lifestyle");
   const [choice, setChoice] = useState<Choice>({ amenities: amenitySeed });
+
+  useEffect(() => {
+    if (step !== "result") return;
+    try {
+      sessionStorage.setItem(BUYER_GAME_UNLOCK_KEY, "1");
+    } catch {
+      // ignore (private mode / storage blocked)
+    }
+  }, [step]);
 
   const stepIndex = useMemo(() => {
     const map: Record<Step, number> = {
@@ -334,9 +351,29 @@ export function ResidenceSelector() {
               Based on your preferences, we recommend a configuration that aligns with your lifestyle and
               budget tier, with a clear path to a private viewing schedule.
             </div>
+            <div className="mt-6">
+              <Link
+                href={playBasePath}
+                className="inline-flex w-full items-center justify-center rounded px-5 py-3 text-xs font-semibold tracking-[0.2em] uppercase text-white bg-[linear-gradient(135deg,#0A1628,#1a2c4e)] hover:shadow-[0_4px_15px_rgba(10,22,40,0.30)] transition-shadow text-center"
+              >
+                Enter 3D experience
+              </Link>
+            </div>
+            <p className="mt-3 text-[11px] text-medium-grey text-center">
+              Powered by the{" "}
+              <a
+                href="https://github.com/cerebriustech-AutomateX/arkadians-game"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-navy hover:text-gold transition-colors"
+              >
+                arkadians-game
+              </a>{" "}
+              experience (hosted here after your questionnaire).
+            </p>
             <button
               type="button"
-              className="mt-6 w-full rounded px-5 py-3 text-xs font-semibold tracking-[0.2em] uppercase text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow"
+              className="mt-4 w-full rounded px-5 py-3 text-xs font-semibold tracking-[0.2em] uppercase text-white bg-[linear-gradient(135deg,#C9A84C,#A6862E)] hover:shadow-[0_0_28px_rgba(201,168,76,0.22)] transition-shadow"
             >
               Book Private Viewing
             </button>

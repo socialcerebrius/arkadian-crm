@@ -201,6 +201,12 @@ export function AdminDashboardClient(props: {
               Personal Command Centre
             </Link>
             <Link
+              href="/pipeline/my-board"
+              className="rounded-lg border border-light-grey bg-white px-4 py-2.5 text-xs font-semibold tracking-[0.15em] uppercase text-navy hover:border-gold hover:bg-cream/40 transition-colors"
+            >
+              Employee Dashboards
+            </Link>
+            <Link
               href="/leads"
               className="rounded-lg border border-navy/20 bg-navy px-4 py-2.5 text-xs font-semibold tracking-[0.15em] uppercase text-white hover:shadow-[0_4px_15px_rgba(10,22,40,0.22)] transition-shadow"
             >

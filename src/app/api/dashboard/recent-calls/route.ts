@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { demoCalls } from "@/lib/demo-data";
 
@@ -6,8 +6,11 @@ function hasDatabase() {
   return Boolean(process.env.DATABASE_URL);
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const ownerId = searchParams.get("ownerId")?.trim() || null;
+
     if (!hasDatabase()) {
       return NextResponse.json({ data: demoCalls.slice(0, 5) });
     }
@@ -15,6 +18,7 @@ export async function GET() {
     const calls = await prisma.call.findMany({
       orderBy: { createdAt: "desc" },
       take: 5,
+      where: ownerId ? { lead: { ownerId } } : undefined,
       select: {
         id: true,
         createdAt: true,

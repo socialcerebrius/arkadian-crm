@@ -8,11 +8,15 @@ export function KanbanColumn({
   title,
   topBorderClass,
   leads,
+  sessionUserId,
+  sessionRole,
 }: {
   stage: PipelineStage;
   title: string;
   topBorderClass: string;
   leads: PipelineLead[];
+  sessionUserId: string | null;
+  sessionRole: string | null;
 }) {
   return (
     <section className="w-[340px] shrink-0 rounded-lg border border-gold/20 bg-white shadow-[0_4px_24px_rgba(10,22,40,0.02)] overflow-hidden flex flex-col">
@@ -59,7 +63,7 @@ export function KanbanColumn({
                       >
                         <GripVertical className="w-4 h-4" />
                       </button>
-                      <LeadCard lead={lead} />
+                      <LeadCard lead={lead} sessionUserId={sessionUserId} sessionRole={sessionRole} />
                     </div>
                   )}
                 </Draggable>

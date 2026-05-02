@@ -4,6 +4,7 @@ import { HotLeadsList } from "@/components/dashboard/HotLeadsList";
 import { RecentCalls } from "@/components/dashboard/RecentCalls";
 import { AIRecommendations } from "@/components/dashboard/AIRecommendations";
 import { TargetGraph } from "@/components/dashboard/TargetGraph";
+import { NotificationsPanel } from "@/components/dashboard/NotificationsPanel";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -15,6 +16,8 @@ import {
 import type { DemoCall, DemoLead } from "@/lib/demo-data";
 import { headers } from "next/headers";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { EmployeeDashboardSwitcher } from "@/components/dashboard/EmployeeDashboardSwitcher";
 
 type DashboardStats = {
   totalLeads: number;
@@ -55,10 +58,11 @@ async function getDashboardHotLeads(baseUrl: string): Promise<DemoLead[]> {
   return Array.isArray(data) ? (data as DemoLead[]) : [];
 }
 
-async function getDashboardRecentCalls(baseUrl: string): Promise<DemoCall[]> {
+async function getDashboardRecentCalls(baseUrl: string, ownerId: string | null): Promise<DemoCall[]> {
   const h = await headers();
   const cookie = h.get("cookie") ?? "";
-  const res = await fetch(`${baseUrl}/api/dashboard/recent-calls`, {
+  const qs = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+  const res = await fetch(`${baseUrl}/api/dashboard/recent-calls${qs}`, {
     cache: "no-store",
     headers: cookie ? { cookie } : undefined,
   });
@@ -69,10 +73,11 @@ async function getDashboardRecentCalls(baseUrl: string): Promise<DemoCall[]> {
   return Array.isArray(data) ? (data as DemoCall[]) : [];
 }
 
-async function getPipelineCounts(baseUrl: string): Promise<PipelineCounts | null> {
+async function getPipelineCounts(baseUrl: string, ownerId: string | null): Promise<PipelineCounts | null> {
   const h = await headers();
   const cookie = h.get("cookie") ?? "";
-  const res = await fetch(`${baseUrl}/api/dashboard/pipeline-counts`, {
+  const qs = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+  const res = await fetch(`${baseUrl}/api/dashboard/pipeline-counts${qs}`, {
     cache: "no-store",
     headers: cookie ? { cookie } : undefined,
   });
@@ -92,10 +97,11 @@ async function getPipelineCounts(baseUrl: string): Promise<PipelineCounts | null
   };
 }
 
-async function getDashboardStats(baseUrl: string): Promise<DashboardStats | null> {
+async function getDashboardStats(baseUrl: string, ownerId: string | null): Promise<DashboardStats | null> {
   const h = await headers();
   const cookie = h.get("cookie") ?? "";
-  const res = await fetch(`${baseUrl}/api/dashboard/stats`, {
+  const qs = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+  const res = await fetch(`${baseUrl}/api/dashboard/stats${qs}`, {
     cache: "no-store",
     headers: cookie ? { cookie } : undefined,
   });
@@ -114,15 +120,49 @@ async function getDashboardStats(baseUrl: string): Promise<DashboardStats | null
   };
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ ownerId?: string }>;
+}) {
   const baseUrl = await getBaseUrl();
   const session = await getSession();
-  const [stats, hotLeads, recentCalls, pipelineCounts] = await Promise.all([
-    getDashboardStats(baseUrl),
-    getDashboardHotLeads(baseUrl),
-    getDashboardRecentCalls(baseUrl),
-    getPipelineCounts(baseUrl),
+  const sp = await searchParams;
+
+  const isAdmin = (session?.role ?? "").toLowerCase() === "admin";
+  const requestedOwnerId = sp.ownerId?.trim() || null;
+  const ownerId = isAdmin ? requestedOwnerId ?? session?.userId ?? null : session?.userId ?? null;
+
+  const [stats, hotLeads, recentCalls, pipelineCounts, userOptions] = await Promise.all([
+    getDashboardStats(baseUrl, ownerId),
+    (async () => {
+      const qs = ownerId ? `?ownerId=${encodeURIComponent(ownerId)}` : "";
+      const h = await headers();
+      const cookie = h.get("cookie") ?? "";
+      const res = await fetch(`${baseUrl}/api/dashboard/hot-leads${qs}`, {
+        cache: "no-store",
+        headers: cookie ? { cookie } : undefined,
+      });
+      if (!res.ok) return [];
+      const json: unknown = await res.json();
+      const data =
+        json && typeof json === "object" && "data" in json ? (json as { data?: unknown }).data : null;
+      return Array.isArray(data) ? (data as DemoLead[]) : [];
+    })(),
+    getDashboardRecentCalls(baseUrl, ownerId),
+    getPipelineCounts(baseUrl, ownerId),
+    isAdmin
+      ? prisma.user.findMany({
+          where: { status: "active", role: { in: ["manager", "sales_rep"] } },
+          orderBy: [{ role: "asc" }, { name: "asc" }],
+          select: { id: true, name: true },
+          take: 50,
+        })
+      : Promise.resolve([]),
   ]);
+
+  const selectedName =
+    isAdmin && ownerId ? userOptions.find((u) => u.id === ownerId)?.name ?? session?.name ?? "Dashboard" : session?.name ?? "Dashboard";
 
   return (
     <div className="px-5 sm:px-8 py-8">
@@ -143,11 +183,17 @@ export default async function Home() {
               Private Dashboard
             </div>
             <h1 className="mt-2 font-(--font-display) text-4xl sm:text-5xl text-navy tracking-tight">
-              Good morning, Ahmad
+              Good morning, {selectedName?.split(" ")[0] ?? selectedName}
             </h1>
           </div>
           <div className="flex items-center gap-3">
             <MobileNav sessionUser={session} />
+            {isAdmin && ownerId && userOptions.length > 0 ? (
+              <EmployeeDashboardSwitcher
+                options={userOptions}
+                selectedOwnerId={ownerId}
+              />
+            ) : null}
             <Link
               href="/leads/new"
               className="rounded px-5 py-3 text-xs font-semibold tracking-[0.2em] uppercase text-white bg-[linear-gradient(135deg,#0A1628,#1a2c4e)] hover:shadow-[0_4px_15px_rgba(10,22,40,0.30)] transition-shadow"
@@ -195,6 +241,10 @@ export default async function Home() {
           <div className="lg:col-span-5">
             <RecentCalls calls={recentCalls} />
           </div>
+        </div>
+
+        <div className="mt-8">
+          <NotificationsPanel ownerId={ownerId} isAdmin={isAdmin} />
         </div>
 
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">

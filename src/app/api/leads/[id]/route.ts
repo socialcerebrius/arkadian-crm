@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getLeadDetailById } from "@/lib/get-lead-detail";
+import { getSession } from "@/lib/auth";
 
 const updateLeadSchema = z.object({
   name: z.string().min(1).optional(),
@@ -39,6 +40,7 @@ const updateLeadSchema = z.object({
   urgency: z.enum(["low", "medium", "high", "immediate"]).optional(),
   language: z.string().max(10).optional(),
   notes: z.string().optional().nullable(),
+  ownerId: z.string().uuid().optional().nullable(),
 });
 
 function hasDatabase() {
@@ -103,6 +105,57 @@ export async function PATCH(
     }
 
     const body = parsed.data;
+
+    // Owner assignment rules:
+    // - admin can assign/reassign/unassign (ownerId can be uuid or null)
+    // - non-admin can only claim an unassigned lead (ownerId == self, and existing ownerId is null)
+    if (body.ownerId !== undefined) {
+      const session = await getSession();
+      if (!session) {
+        return NextResponse.json(
+          { error: { code: "UNAUTHORIZED", message: "Sign in required." } },
+          { status: 401 },
+        );
+      }
+      const isAdmin = (session.role ?? "").toLowerCase() === "admin";
+
+      const existingLead = await prisma.lead.findFirst({
+        where: { id, deletedAt: null },
+        select: { id: true, ownerId: true },
+      });
+      if (!existingLead) {
+        return NextResponse.json(
+          { error: { code: "LEAD_NOT_FOUND", message: "Lead not found." } },
+          { status: 404 },
+        );
+      }
+
+      if (!isAdmin) {
+        const claiming = body.ownerId === session.userId;
+        const canClaim = claiming && existingLead.ownerId == null;
+        if (!canClaim) {
+          return NextResponse.json(
+            { error: { code: "FORBIDDEN", message: "You can only claim unassigned leads." } },
+            { status: 403 },
+          );
+        }
+      } else {
+        // Admin validation: if assigning to a user, ensure it exists and is active.
+        if (body.ownerId !== null) {
+          const u = await prisma.user.findFirst({
+            where: { id: body.ownerId, status: "active" },
+            select: { id: true },
+          });
+          if (!u) {
+            return NextResponse.json(
+              { error: { code: "INVALID_OWNER", message: "Assigned advisor does not exist." } },
+              { status: 400 },
+            );
+          }
+        }
+      }
+    }
+
     await prisma.lead.update({
       where: { id },
       data: {
@@ -128,6 +181,7 @@ export async function PATCH(
         urgency: body.urgency,
         language: body.language,
         notes: body.notes === undefined ? undefined : body.notes,
+        ownerId: body.ownerId === undefined ? undefined : body.ownerId,
       },
     });
 

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { OutboundAiCallButton } from "@/components/leads/OutboundAiCallButton";
 import { VapiBrowserTestButton } from "@/components/leads/VapiBrowserTestButton";
 import { ProspectIntelligenceCard } from "@/components/leads/ProspectIntelligenceCard";
+import { ClientNotesCard } from "@/components/leads/ClientNotesCard";
+import { AssignedAdvisorControl } from "@/components/leads/AssignedAdvisorControl";
 import type { DemoLead } from "@/lib/demo-data";
 import { getLatestBrowserTestForLead, getLeadCallLogs } from "@/lib/get-lead-call-logs";
 import { cleanBrowserTranscriptLines, parseStoredBrowserTranscript } from "@/lib/vapi/parse-web-transcript-message";
@@ -9,6 +11,11 @@ import { buildVapiLeadContext } from "@/lib/vapi-lead-context";
 import { getRecentActivitiesForLead } from "@/lib/get-lead-activities";
 import { getLeadDetailById } from "@/lib/get-lead-detail";
 import { scoreProspect } from "@/lib/prospect-scoring";
+import { getSession } from "@/lib/auth";
+import { deriveClientProgress } from "@/lib/client-progress";
+import { scoreLead } from "@/lib/lead-scoring";
+import { AISalesAssistantPanel } from "@/components/leads/AISalesAssistantPanel";
+import { prisma } from "@/lib/prisma";
 
 const LEAD_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,7 +38,8 @@ export default async function LeadDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [lead, activities, callLogs, latestBrowserTest] = await Promise.all([
+  const [session, lead, activities, callLogs, latestBrowserTest] = await Promise.all([
+    getSession(),
     getLeadDetailById(id),
     getRecentActivitiesForLead(id, 12),
     getLeadCallLogs(id),
@@ -61,6 +69,9 @@ export default async function LeadDetailPage({
 
   return (
     <LeadDetailContent
+      sessionUserName={session?.name ?? null}
+      sessionUserId={session?.userId ?? null}
+      sessionRole={session?.role ?? null}
       lead={lead}
       activities={activities}
       callLogs={callLogs}
@@ -69,12 +80,18 @@ export default async function LeadDetailPage({
   );
 }
 
-function LeadDetailContent({
+async function LeadDetailContent({
+  sessionUserName,
+  sessionUserId,
+  sessionRole,
   lead,
   activities,
   callLogs,
   latestBrowserTest,
 }: {
+  sessionUserName: string | null;
+  sessionUserId: string | null;
+  sessionRole: string | null;
   lead: DemoLead;
   activities: Awaited<ReturnType<typeof getRecentActivitiesForLead>>;
   callLogs: Awaited<ReturnType<typeof getLeadCallLogs>>;
@@ -98,9 +115,22 @@ function LeadDetailContent({
   const ctxBits = [vapiCtx.propertyInterest, vapiCtx.budgetText].filter(Boolean);
 
   const latestActivity = activities[0] ?? null;
+  const nextBooking =
+    isDbLead && Boolean(process.env.DATABASE_URL)
+      ? await prisma.activity.findFirst({
+          where: {
+            leadId: lead.id,
+            status: { in: ["pending", "in_progress"] },
+            dueAt: { not: null, gte: new Date() },
+          },
+          orderBy: [{ dueAt: "asc" }],
+          select: { title: true, type: true, dueAt: true },
+        })
+      : null;
   const intelligence = scoreProspect(
     {
       name: lead.name,
+      status: lead.status,
       budgetMin: lead.budgetMin ?? null,
       budgetMax: lead.budgetMax ?? null,
       urgency: lead.urgency ?? null,
@@ -110,6 +140,44 @@ function LeadDetailContent({
     },
     latestBrowserTest,
     latestActivity,
+  );
+
+  const progress = deriveClientProgress({
+    status: lead.status,
+    notes: lead.notes ?? null,
+    latestActivityTitle: latestActivity?.title ?? null,
+    latestCallSummary: latestBrowserTest?.summary ?? null,
+    latestCallTranscript: latestBrowserTest?.transcript ?? null,
+  });
+
+  const aiScore = scoreLead(
+    {
+      status: lead.status,
+      budgetMin: lead.budgetMin ?? null,
+      budgetMax: lead.budgetMax ?? null,
+      urgency: lead.urgency ?? null,
+      notes: lead.notes ?? null,
+      source: lead.source,
+      preferredUnit: lead.preferredUnit ?? null,
+      preferredView: lead.preferredView ?? null,
+      lastCallAt: null,
+      updatedAt: null,
+    },
+    {
+      latestActivity: latestActivity
+        ? {
+            type: latestActivity.type,
+            status: latestActivity.status,
+            title: latestActivity.title,
+            dueAt: null,
+          }
+        : null,
+      nextActivity: nextBooking
+        ? { type: nextBooking.type, status: "pending", title: nextBooking.title, dueAt: nextBooking.dueAt }
+        : null,
+      latestCallSummary: latestBrowserTest?.summary ?? null,
+      latestCallTranscript: latestBrowserTest?.transcript ?? null,
+    },
   );
 
   const callbackTextFromSummary =
@@ -181,10 +249,10 @@ function LeadDetailContent({
               <span
                 className={[
                   "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold",
-                  scoreClass(lead.score),
+                  scoreClass(aiScore.score),
                 ].join(" ")}
               >
-                Score {lead.score}
+                Score {aiScore.score}
               </span>
             </div>
           </div>
@@ -192,6 +260,36 @@ function LeadDetailContent({
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
           <div className="space-y-8 min-w-0">
+            <AISalesAssistantPanel
+              lead={{
+                id: lead.id,
+                name: lead.name,
+                status: lead.status,
+                budgetMin: lead.budgetMin ?? null,
+                budgetMax: lead.budgetMax ?? null,
+                preferredUnit: (lead.preferredUnit as any) ?? null,
+                preferredView: (lead.preferredView as any) ?? null,
+                urgency: (lead.urgency as any) ?? null,
+              }}
+              advisorName={sessionUserName ?? lead.ownerLabel ?? "Advisor"}
+              canUseAssistant={
+                (sessionRole ?? "").toLowerCase() === "admin" ||
+                (Boolean(sessionUserId) && Boolean(lead.ownerId) && lead.ownerId === sessionUserId)
+              }
+              score={aiScore}
+              progress={{
+                stage: progress.stage,
+                paymentStatus: progress.paymentStatus,
+                nextAction: progress.nextAction,
+                latestSignal: progress.latestSignal,
+              }}
+              nextActivity={
+                nextBooking?.dueAt
+                  ? { title: nextBooking.title, type: nextBooking.type, dueAt: nextBooking.dueAt.toISOString() }
+                  : null
+              }
+            />
+
             <ProspectIntelligenceCard
               score={intelligence.score}
               label={intelligence.label}
@@ -203,8 +301,23 @@ function LeadDetailContent({
               callbackText={callbackText}
             />
 
+            <ClientNotesCard
+              leadId={lead.id}
+              existingNotes={lead.notes ?? null}
+              sessionUserName={sessionUserName}
+            />
+
             <section id="profile" className="rounded-xl border border-light-grey bg-white shadow-card p-6">
               <h2 className="font-(--font-display) text-lg text-navy">Profile</h2>
+              <div className="mt-4">
+                <AssignedAdvisorControl
+                  leadId={lead.id}
+                  currentOwnerId={lead.ownerId ?? null}
+                  currentOwnerLabel={lead.ownerLabel ?? null}
+                  sessionUserId={sessionUserId}
+                  sessionRole={sessionRole}
+                />
+              </div>
               <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
                   ["Status", lead.status.replaceAll("_", " ")],
@@ -307,6 +420,31 @@ function LeadDetailContent({
               </div>
             </section>
           ) : null}
+
+          <section className="rounded-xl border border-light-grey bg-white shadow-card p-6 h-fit">
+            <h2 className="font-(--font-display) text-lg text-navy">Client Progress</h2>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {[
+                ["Stage", progress.stage],
+                ["Payment status", progress.paymentStatus],
+                ["Assigned advisor", lead.ownerLabel ?? "Unassigned"],
+                ["Estimated value", lead.budgetLabel],
+              ].map(([k, v]) => (
+                <div key={k} className="rounded-lg border border-light-grey bg-cream/20 px-4 py-3">
+                  <div className="text-xs tracking-widest uppercase text-medium-grey">{k}</div>
+                  <div className="mt-1 text-sm font-semibold text-navy">{v}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-lg border border-light-grey bg-cream/20 px-4 py-3">
+              <div className="text-xs tracking-widest uppercase text-medium-grey">Next step</div>
+              <div className="mt-1 text-sm text-navy">{progress.nextAction}</div>
+            </div>
+            <div className="mt-3 text-xs text-medium-grey leading-relaxed">
+              <span className="font-semibold text-navy">Latest note:</span>{" "}
+              {progress.latestSignal ?? "—"}
+            </div>
+          </section>
 
           <section className="rounded-xl border border-light-grey bg-white shadow-card p-6 h-fit">
             <h2 className="font-(--font-display) text-lg text-navy">Activity & follow-up</h2>

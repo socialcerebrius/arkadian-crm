@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { demoLeads } from "@/lib/demo-data";
 
@@ -15,8 +15,11 @@ type Counts = {
   closed_lost: number;
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const ownerId = searchParams.get("ownerId")?.trim() || null;
+
     if (!hasDatabase()) {
       const counts: Counts = {
         new: 0,
@@ -32,7 +35,7 @@ export async function GET() {
 
     const grouped = await prisma.lead.groupBy({
       by: ["status"],
-      where: { deletedAt: null },
+      where: { deletedAt: null, ownerId: ownerId ?? undefined },
       _count: { _all: true },
     });
 

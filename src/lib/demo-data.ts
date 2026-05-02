@@ -31,6 +31,7 @@ export type DemoLead = {
   urgency?: "low" | "medium" | "high" | "immediate";
   language?: string;
   ownerLabel?: string;
+  ownerId?: string;
   updatedLabel: string;
   /** Formatted labels when available (e.g. from DB). */
   createdAtLabel?: string;

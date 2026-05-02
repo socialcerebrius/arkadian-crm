@@ -1,4 +1,5 @@
 import { ResidenceSelector } from "@/components/game/ResidenceSelector";
+import { BuyerShareUrls } from "@/components/experience/BuyerShareUrls";
 
 export default function GamePage() {
   return (
@@ -10,8 +11,21 @@ export default function GamePage() {
             Buyer Game
           </h1>
           <p className="mt-2 text-medium-grey max-w-2xl">
-            Internal view of completed sessions and AI recommendations.
+            Buyers complete the questionnaire below; after the final step they can open the 3D Arkadians experience
+            (from the{" "}
+            <a
+              href="https://github.com/cerebriustech-AutomateX/arkadians-game"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-navy hover:text-gold transition-colors"
+            >
+              arkadians-game
+            </a>{" "}
+            repo, served from this app). Share the public buyer links below (full URLs + copy).
           </p>
+          <div className="mt-4 max-w-2xl">
+            <BuyerShareUrls variant="inline" />
+          </div>
           </div>
           <button
             type="button"

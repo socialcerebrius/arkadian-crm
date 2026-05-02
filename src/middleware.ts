@@ -24,12 +24,25 @@ async function readSession(req: NextRequest) {
   }
 }
 
+function isPublicApiPath(pathname: string) {
+  return (
+    pathname.startsWith("/api/auth/login") ||
+    pathname.startsWith("/api/auth/google-game") ||
+    pathname.startsWith("/api/auth/game-session")
+  );
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const secret = authSecret();
 
   if (!secret) {
-    if (pathname === "/login" || pathname === "/api/auth/login") {
+    if (
+      pathname === "/login" ||
+      pathname === "/api/auth/login" ||
+      pathname.startsWith("/experience") ||
+      isPublicApiPath(pathname)
+    ) {
       return NextResponse.next();
     }
     return new NextResponse(
@@ -46,9 +59,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname.startsWith("/experience")) {
+    return NextResponse.next();
+  }
+
   const session = await readSession(req);
 
   if (pathname.startsWith("/api/auth/login")) {
+    return NextResponse.next();
+  }
+
+  if (isPublicApiPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -70,6 +91,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|arkadians-game|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|html)$).*)",
   ],
 };

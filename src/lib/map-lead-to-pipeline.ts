@@ -14,6 +14,7 @@ export type ApiLeadListItem = {
   preferredUnit?: string;
   preferredView?: string;
   ownerLabel?: string;
+  ownerId?: string;
   updatedLabel?: string;
 };
 
@@ -95,6 +96,7 @@ export function mapApiLeadToPipelineLead(raw: ApiLeadListItem): PipelineLead {
     unitLabel: formatUnitLabel(raw.preferredUnit),
     viewLabel: formatViewLabel(raw.preferredView),
     daysInStage: daysFromUpdatedLabel(raw.updatedLabel),
+    ownerId: raw.ownerId,
     ownerLabel: raw.ownerLabel,
   };
 }

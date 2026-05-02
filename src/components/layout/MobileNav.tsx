@@ -6,21 +6,26 @@ import type { SessionUser } from "@/lib/auth";
 
 type NavItem = { href: string; label: string };
 
-const navItems: NavItem[] = [
-  { href: "/", label: "Command Centre" },
+const coreNavItems: NavItem[] = [
   { href: "/pipeline", label: "Pipeline" },
+  { href: "/pipeline/my-board", label: "My Board" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/leads", label: "Prospects" },
   { href: "/calls", label: "Calls" },
   { href: "/activities", label: "Activities" },
   { href: "/game", label: "Buyer Game" },
+  { href: "/experience", label: "Buyer share link" },
   { href: "/construction", label: "Construction" },
   { href: "/settings", label: "Settings" },
 ];
+const personalCommandCentre: NavItem = { href: "/", label: "Command Centre" };
 
 export function MobileNav({ sessionUser }: { sessionUser: SessionUser | null }) {
   const [open, setOpen] = useState(false);
   const isAdmin = (sessionUser?.role ?? "").toLowerCase() === "admin";
-  const items = isAdmin ? [...navItems, { href: "/admin", label: "Admin" }] : navItems;
+  const items = isAdmin
+    ? [{ href: "/admin", label: "Arkadians Command Centre" }, ...coreNavItems]
+    : coreNavItems;
 
   return (
     <div className="lg:hidden">
@@ -68,6 +73,16 @@ export function MobileNav({ sessionUser }: { sessionUser: SessionUser | null }) 
                   {item.label}
                 </Link>
               ))}
+
+              <div className="mt-3 pt-3 border-t border-navy-light/70">
+                <Link
+                  href={personalCommandCentre.href}
+                  className="h-12 px-4 rounded-md flex items-center text-sm tracking-wide text-white/80 hover:bg-navy-light hover:text-white transition-colors"
+                  onClick={() => setOpen(false)}
+                >
+                  {personalCommandCentre.label}
+                </Link>
+              </div>
             </nav>
           </div>
         </div>

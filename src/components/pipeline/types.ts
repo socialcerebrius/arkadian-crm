@@ -19,6 +19,7 @@ export type PipelineLead = {
   unitLabel?: string;
   viewLabel?: string;
   daysInStage: number;
+  ownerId?: string;
   ownerLabel?: string;
   stage: PipelineStage;
 };

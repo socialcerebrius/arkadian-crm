@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 export type ProspectIntelligenceProps = {
   score: number;
-  label: "Hot" | "Warm" | "Cold";
+  label: "Closing / Client" | "Hot" | "Warm" | "Cold";
   reasons: string[];
   recommendedAction: string;
   leadName: string;
@@ -13,7 +13,8 @@ export type ProspectIntelligenceProps = {
   callbackText: string;
 };
 
-function labelStyles(label: "Hot" | "Warm" | "Cold") {
+function labelStyles(label: "Closing / Client" | "Hot" | "Warm" | "Cold") {
+  if (label === "Closing / Client") return "bg-success ring-2 ring-gold text-white";
   if (label === "Hot") return "bg-success text-white";
   if (label === "Warm") return "bg-gold text-navy";
   return "bg-light-grey text-navy";

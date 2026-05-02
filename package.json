@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "backfill:scores": "tsx scripts/backfill-lead-scores.ts",
+    "assign:leads": "tsx scripts/assign-leads.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

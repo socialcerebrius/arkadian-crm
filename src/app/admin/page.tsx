@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/datetime";
 import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
+import { scoreLead } from "@/lib/lead-scoring";
+import { ActivityOversightPanel } from "@/components/admin/ActivityOversightPanel";
 import {
   deriveBookingStatus,
   deriveNextAction,
@@ -112,7 +114,18 @@ export default async function AdminPage() {
     name: l.name,
     status: l.status,
     source: l.source,
-    score: l.score,
+    score: scoreLead({
+      status: l.status,
+      budgetMin: l.budgetMin,
+      budgetMax: l.budgetMax,
+      urgency: l.urgency,
+      notes: l.notes,
+      source: l.source,
+      preferredUnit: l.preferredUnit,
+      preferredView: l.preferredView,
+      lastCallAt: l.lastCallAt,
+      updatedAt: null,
+    }).score,
     budgetMin: l.budgetMin ?? null,
     budgetMax: l.budgetMax ?? null,
     preferredUnit: l.preferredUnit ?? null,
@@ -429,6 +442,7 @@ export default async function AdminPage() {
   return (
     <div className="px-5 sm:px-8 py-8">
       <div className="max-w-[1440px] mx-auto">
+        <ActivityOversightPanel />
         <AdminDashboardClient
           updatedLabel={formatDateTime(now)}
           kpis={kpis}

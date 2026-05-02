@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { demoLeads, type DemoLead } from "@/lib/demo-data";
 import { formatBudget } from "@/lib/budget";
 import { formatDateTime } from "@/lib/datetime";
+import { scoreLead } from "@/lib/lead-scoring";
 
 /** Allow longer cold starts when connecting to remote Postgres from serverless (e.g. Vercel). */
 export const maxDuration = 30;
@@ -92,6 +93,8 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search") || undefined;
     const scoreMin = searchParams.get("scoreMin");
     const scoreMax = searchParams.get("scoreMax");
+    const ownerIdParam = searchParams.get("ownerId");
+    const ownerId = ownerIdParam && ownerIdParam.trim() ? ownerIdParam.trim() : undefined;
 
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const limit = Math.min(50, Math.max(1, Number(searchParams.get("limit") ?? 20)));
@@ -117,6 +120,7 @@ export async function GET(req: NextRequest) {
     };
 
     if (status) where.status = status;
+    if (ownerId) where.ownerId = ownerId;
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -153,6 +157,8 @@ export async function GET(req: NextRequest) {
           urgency: true,
           language: true,
           lastCallAt: true,
+          ownerId: true,
+          owner: { select: { name: true } },
           createdAt: true,
           updatedAt: true,
         },
@@ -182,7 +188,18 @@ export async function GET(req: NextRequest) {
         email: l.email ?? undefined,
         source: l.source,
         status: l.status,
-        score: l.score,
+        score: scoreLead({
+          status: l.status,
+          budgetMin: l.budgetMin,
+          budgetMax: l.budgetMax,
+          urgency: l.urgency,
+          notes: null,
+          source: l.source,
+          preferredUnit: l.preferredUnit,
+          preferredView: l.preferredView,
+          lastCallAt: l.lastCallAt,
+          updatedAt: l.updatedAt,
+        }).score,
         budgetMin: l.budgetMin != null ? Number(l.budgetMin) : undefined,
         budgetMax: l.budgetMax != null ? Number(l.budgetMax) : undefined,
         budgetLabel: formatBudget(l.budgetMin, l.budgetMax),
@@ -190,6 +207,8 @@ export async function GET(req: NextRequest) {
         preferredView: l.preferredView ?? undefined,
         urgency: l.urgency,
         language: l.language,
+        ownerId: l.ownerId ?? undefined,
+        ownerLabel: l.owner?.name ?? undefined,
         updatedLabel: "Recently",
         updatedAtLabel: formatDateTime(l.updatedAt),
         createdAtLabel: formatDateTime(l.createdAt),

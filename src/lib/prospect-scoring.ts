@@ -1,5 +1,6 @@
 import type { LatestBrowserTestRow } from "@/lib/get-lead-call-logs";
 import type { LeadActivityRow } from "@/lib/get-lead-activities";
+import { deriveClientProgress } from "@/lib/client-progress";
 
 type LeadLike = {
   name?: string | null;
@@ -8,12 +9,13 @@ type LeadLike = {
   urgency?: string | null;
   preferredUnit?: string | null;
   preferredView?: string | null;
+  status?: string | null;
   notes?: string | null;
 };
 
 export type ProspectScoreResult = {
   score: number;
-  label: "Hot" | "Warm" | "Cold";
+  label: "Closing / Client" | "Hot" | "Warm" | "Cold";
   reasons: string[];
   recommendedAction: string;
 };
@@ -39,6 +41,14 @@ export function scoreProspect(
   const transcript = latestCallLog?.transcript ?? "";
   const notes = lead.notes ?? "";
   const combinedText = `${summary}\n${transcript}\n${notes}`.toLowerCase();
+
+  const progress = deriveClientProgress({
+    status: lead.status ?? null,
+    notes: lead.notes ?? null,
+    latestActivityTitle: latestActivity?.title ?? null,
+    latestCallSummary: summary,
+    latestCallTranscript: transcript,
+  });
 
   const hasBudget = lead.budgetMin != null || lead.budgetMax != null || combinedText.includes("budget:");
   if (hasBudget) {
@@ -87,16 +97,55 @@ export function scoreProspect(
     reasons.push("View preference captured");
   }
 
+  // Sales progress points (demo-derived)
+  if (progress.flags.viewingBooked || (lead.status ?? "").toLowerCase() === "viewing_booked") {
+    score += 20;
+    reasons.push("Viewing booked");
+  }
+  if (progress.flags.apartmentViewed) {
+    score += 25;
+    reasons.push("Apartment viewed / client visited");
+  }
+  if (progress.flags.reserved) {
+    score += 25;
+    reasons.push("Reserved / booking pending");
+  }
+  if (progress.flags.depositPaid) {
+    score += 30;
+    reasons.push("Deposit paid");
+  }
+  if (progress.flags.paymentPlanActive) {
+    score += 35;
+    reasons.push("Payment plan active");
+  }
+  if (progress.flags.closedWon || (lead.status ?? "").toLowerCase() === "closed_won") {
+    score += 50;
+    reasons.push("Closed won");
+  }
+
+  // Light progress boost for active stages.
+  if (includesAny((lead.status ?? "").toLowerCase(), ["contacted", "viewing_booked", "negotiating", "closed_won"])) {
+    score += 5;
+  }
+
   score = clamp(score, 0, 100);
 
-  const label: ProspectScoreResult["label"] = score >= 75 ? "Hot" : score >= 45 ? "Warm" : "Cold";
+  const label: ProspectScoreResult["label"] =
+    score >= 85 ? "Closing / Client" : score >= 75 ? "Hot" : score >= 45 ? "Warm" : "Cold";
 
-  const recommendedAction =
-    label === "Hot"
-      ? "Senior consultant should call at the confirmed callback time."
-      : label === "Warm"
-        ? "Send WhatsApp confirmation and follow up within 24 hours."
-        : "Send project information and nurture.";
+  const recommendedAction = progress.flags.apartmentViewed && !progress.flags.depositPaid && !progress.flags.paymentPlanActive
+    ? "Follow up for booking deposit."
+    : progress.flags.reserved && !progress.flags.depositPaid
+      ? "Collect deposit / confirm booking."
+      : progress.flags.depositPaid && !progress.flags.paymentPlanActive
+        ? "Move to payment plan tracking."
+        : progress.flags.paymentPlanActive
+          ? "Monitor payment schedule."
+          : label === "Hot"
+            ? "Senior consultant should call at confirmed callback time."
+            : label === "Warm"
+              ? "Send WhatsApp confirmation and follow up."
+              : "Nurture with project information.";
 
   // Keep reasons short (demo-friendly)
   const uniqueReasons = Array.from(new Set(reasons)).slice(0, 5);
