@@ -38,6 +38,11 @@ export type DemoLead = {
   updatedAtLabel?: string;
   lastCallAtLabel?: string;
   notes?: string;
+  inventoryFlatNumber?: string;
+  inventoryFlatType?: string;
+  inventoryStage?: string;
+  depositStatus?: string;
+  instalmentStatus?: string;
 };
 
 export type DemoCall = {

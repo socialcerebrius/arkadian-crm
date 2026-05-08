@@ -15,6 +15,11 @@ export type ApiLeadListItem = {
   preferredView?: string;
   ownerLabel?: string;
   ownerId?: string;
+  inventoryFlatNumber?: string;
+  inventoryFlatType?: string;
+  inventoryStage?: string;
+  depositStatus?: string;
+  instalmentStatus?: string;
   updatedLabel?: string;
 };
 
@@ -95,6 +100,11 @@ export function mapApiLeadToPipelineLead(raw: ApiLeadListItem): PipelineLead {
     email: raw.email,
     unitLabel: formatUnitLabel(raw.preferredUnit),
     viewLabel: formatViewLabel(raw.preferredView),
+    inventoryFlatNumber: raw.inventoryFlatNumber,
+    inventoryFlatType: raw.inventoryFlatType,
+    inventoryStage: raw.inventoryStage,
+    depositStatus: raw.depositStatus,
+    instalmentStatus: raw.instalmentStatus,
     daysInStage: daysFromUpdatedLabel(raw.updatedLabel),
     ownerId: raw.ownerId,
     ownerLabel: raw.ownerLabel,

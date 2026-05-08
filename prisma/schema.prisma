@@ -94,6 +94,7 @@ enum Priority {
 
 enum UserRole {
   admin
+  ceo
   manager
   sales_rep
   viewer
@@ -120,6 +121,15 @@ enum Lifestyle {
   investor
   retiree
   luxury_seeker
+}
+
+enum InventoryStatus {
+  available
+  interested
+  viewing
+  deposit_secured
+  payment_secured
+  sold_assigned
 }
 
 model User {
@@ -171,12 +181,38 @@ model Lead {
   activities   Activity[]
   gameSessions GameSession[]
   aiOutputs    AIOutput[]
+  inventoryUnits InventoryUnit[]
 
   @@index([status])
   @@index([score(sort: Desc)])
   @@index([ownerId])
   @@index([createdAt(sort: Desc)])
   @@map("leads")
+}
+
+model InventoryUnit {
+  id           String          @id @default(uuid())
+  tower        String
+  flatNumber   String          @unique @map("flat_number")
+  sizeSqft     Int             @map("size_sqft")
+  type         String
+  viewCategory String          @map("view_category")
+  price        BigInt
+  status       InventoryStatus @default(available)
+  customerName String?         @map("customer_name")
+  notes        String?
+
+  leadId     String?   @map("lead_id")
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  statusAt   DateTime  @default(now()) @map("status_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([tower])
+  @@index([viewCategory])
+  @@index([leadId])
+  @@map("inventory_units")
 }
 
 model Call {

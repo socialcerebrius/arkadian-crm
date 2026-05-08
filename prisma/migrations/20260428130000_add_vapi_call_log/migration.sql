@@ -1,5 +1,10 @@
 -- CreateEnum
-CREATE TYPE "CallLogDirection" AS ENUM ('INBOUND', 'OUTBOUND');
+DO $$
+BEGIN
+  CREATE TYPE "CallLogDirection" AS ENUM ('INBOUND', 'OUTBOUND');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- AlterTable
 ALTER TABLE "leads" ADD COLUMN "last_call_at" TIMESTAMP(3);
@@ -14,6 +19,7 @@ CREATE TABLE "call_logs" (
     "outcome" VARCHAR(500),
     "summary" TEXT,
     "transcript" TEXT,
+    "duration_seconds" INTEGER,
     "recording_url" TEXT,
     "transferred" BOOLEAN NOT NULL DEFAULT false,
     "started_at" TIMESTAMP(3),

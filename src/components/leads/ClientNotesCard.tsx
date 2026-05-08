@@ -3,25 +3,52 @@
 import { useMemo, useState } from "react";
 import { formatDateTime } from "@/lib/datetime";
 
+type TimelineEntry = {
+  stamp: string | null;
+  who: string | null;
+  body: string;
+};
+
 function buildAppendLine(noteText: string, userName: string) {
   const stamp = formatDateTime(new Date());
   const who = userName.trim() || "Advisor";
   return `[${stamp}] ${who}: ${noteText.trim()}`;
 }
 
-function parseTimeline(notes: string) {
+function parseTimeline(notes: string): TimelineEntry[] {
   const lines = notes
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+    .map((l) => l.trimEnd())
+    .filter((l) => l.trim().length > 0);
 
-  // If the notes already look like timestamped lines, keep them as-is.
-  // Otherwise treat as one blob.
-  const timestamped = lines.filter((l) => /^\[[^\]]+\]\s+.+?:\s+/.test(l));
-  if (timestamped.length >= Math.max(1, Math.floor(lines.length * 0.6))) {
-    return lines;
+  if (lines.length === 0) return [];
+
+  const headerRe = /^\[([^\]]+)\]\s+([^:]+):\s*(.*)$/;
+  const entries: TimelineEntry[] = [];
+  let current: TimelineEntry | null = null;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    const m = line.match(headerRe);
+    if (m) {
+      if (current) entries.push(current);
+      current = {
+        stamp: m[1]?.trim() || null,
+        who: m[2]?.trim() || null,
+        body: m[3]?.trim() || "",
+      };
+      continue;
+    }
+
+    if (!current) {
+      current = { stamp: null, who: null, body: line };
+    } else {
+      current.body = current.body ? `${current.body}\n${line}` : line;
+    }
   }
-  return notes.trim() ? [notes.trim()] : [];
+
+  if (current) entries.push(current);
+  return entries.filter((e) => e.body.trim().length > 0);
 }
 
 export function ClientNotesCard({
@@ -96,9 +123,14 @@ export function ClientNotesCard({
               .slice()
               .reverse()
               .slice(0, 30)
-              .map((line, idx) => (
-                <li key={`${idx}-${line}`} className="text-sm text-navy leading-relaxed whitespace-pre-wrap wrap-break-word">
-                  {line}
+              .map((entry, idx) => (
+                <li key={`${idx}-${entry.stamp ?? "no-stamp"}-${entry.body.slice(0, 24)}`} className="rounded-lg border border-light-grey bg-white p-3">
+                  <div className="text-[11px] tracking-[0.12em] uppercase text-medium-grey">
+                    {entry.stamp ?? "Date/time not captured"} · {entry.who ?? "Unknown note taker"}
+                  </div>
+                  <div className="mt-2 text-sm text-navy leading-relaxed whitespace-pre-wrap wrap-break-word">
+                    {entry.body}
+                  </div>
                 </li>
               ))}
           </ul>

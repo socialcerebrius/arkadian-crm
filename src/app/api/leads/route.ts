@@ -6,6 +6,7 @@ import { demoLeads, type DemoLead } from "@/lib/demo-data";
 import { formatBudget } from "@/lib/budget";
 import { formatDateTime } from "@/lib/datetime";
 import { scoreLead } from "@/lib/lead-scoring";
+import { parseInventoryTracking } from "@/lib/inventory-tracking";
 
 /** Allow longer cold starts when connecting to remote Postgres from serverless (e.g. Vercel). */
 export const maxDuration = 30;
@@ -31,6 +32,7 @@ const createLeadSchema = z.object({
     .optional(),
   preferredView: z.enum(["sea", "golf", "city", "dual"]).optional(),
   urgency: z.enum(["low", "medium", "high", "immediate"]).optional(),
+  notes: z.string().optional(),
 });
 
 function hasDatabase() {
@@ -159,6 +161,7 @@ export async function GET(req: NextRequest) {
           lastCallAt: true,
           ownerId: true,
           owner: { select: { name: true } },
+          notes: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -181,39 +184,48 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      data: leads.map((l) => ({
-        id: l.id,
-        name: l.name,
-        phone: l.phone ?? undefined,
-        email: l.email ?? undefined,
-        source: l.source,
-        status: l.status,
-        score: scoreLead({
-          status: l.status,
-          budgetMin: l.budgetMin,
-          budgetMax: l.budgetMax,
-          urgency: l.urgency,
-          notes: null,
+      data: leads.map((l) => {
+        const inventory = parseInventoryTracking(l.notes);
+        return {
+          id: l.id,
+          name: l.name,
+          phone: l.phone ?? undefined,
+          email: l.email ?? undefined,
           source: l.source,
-          preferredUnit: l.preferredUnit,
-          preferredView: l.preferredView,
-          lastCallAt: l.lastCallAt,
-          updatedAt: l.updatedAt,
-        }).score,
-        budgetMin: l.budgetMin != null ? Number(l.budgetMin) : undefined,
-        budgetMax: l.budgetMax != null ? Number(l.budgetMax) : undefined,
-        budgetLabel: formatBudget(l.budgetMin, l.budgetMax),
-        preferredUnit: l.preferredUnit ?? undefined,
-        preferredView: l.preferredView ?? undefined,
-        urgency: l.urgency,
-        language: l.language,
-        ownerId: l.ownerId ?? undefined,
-        ownerLabel: l.owner?.name ?? undefined,
-        updatedLabel: "Recently",
-        updatedAtLabel: formatDateTime(l.updatedAt),
-        createdAtLabel: formatDateTime(l.createdAt),
-        lastCallAtLabel: l.lastCallAt ? formatDateTime(l.lastCallAt) : undefined,
-      })),
+          status: l.status,
+          score: scoreLead({
+            status: l.status,
+            budgetMin: l.budgetMin,
+            budgetMax: l.budgetMax,
+            urgency: l.urgency,
+            notes: null,
+            source: l.source,
+            preferredUnit: l.preferredUnit,
+            preferredView: l.preferredView,
+            lastCallAt: l.lastCallAt,
+            updatedAt: l.updatedAt,
+          }).score,
+          budgetMin: l.budgetMin != null ? Number(l.budgetMin) : undefined,
+          budgetMax: l.budgetMax != null ? Number(l.budgetMax) : undefined,
+          budgetLabel: formatBudget(l.budgetMin, l.budgetMax),
+          preferredUnit: l.preferredUnit ?? undefined,
+          preferredView: l.preferredView ?? undefined,
+          urgency: l.urgency,
+          language: l.language,
+          ownerId: l.ownerId ?? undefined,
+          ownerLabel: l.owner?.name ?? undefined,
+          notes: l.notes ?? undefined,
+          inventoryFlatNumber: inventory.flatNumber ?? undefined,
+          inventoryFlatType: inventory.flatType ?? undefined,
+          inventoryStage: inventory.clientStage,
+          depositStatus: inventory.depositStatus,
+          instalmentStatus: inventory.instalmentStatus,
+          updatedLabel: "Recently",
+          updatedAtLabel: formatDateTime(l.updatedAt),
+          createdAtLabel: formatDateTime(l.createdAt),
+          lastCallAtLabel: l.lastCallAt ? formatDateTime(l.lastCallAt) : undefined,
+        };
+      }),
       meta: { total, page, limit },
     });
   } catch {
@@ -268,6 +280,7 @@ export async function POST(req: NextRequest) {
         preferredView: body.preferredView ?? null,
         urgency: body.urgency ?? "medium",
         language: "en",
+        notes: body.notes ?? null,
       },
     });
 

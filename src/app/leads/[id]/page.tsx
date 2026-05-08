@@ -16,6 +16,8 @@ import { deriveClientProgress } from "@/lib/client-progress";
 import { scoreLead } from "@/lib/lead-scoring";
 import { AISalesAssistantPanel } from "@/components/leads/AISalesAssistantPanel";
 import { prisma } from "@/lib/prisma";
+import { parseInventoryTracking } from "@/lib/inventory-tracking";
+import { InventoryAssignModal } from "@/components/leads/InventoryAssignModal";
 
 const LEAD_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -187,6 +189,7 @@ async function LeadDetailContent({
     : callbackTextFromSummary
       ? callbackTextFromSummary
       : "";
+  const inventoryTracking = parseInventoryTracking(lead.notes ?? undefined);
   const outboundDisabledReason = !isDbLead
     ? "AI outbound calls are only available for prospects saved in the database."
     : !hasPhone
@@ -326,6 +329,11 @@ async function LeadDetailContent({
                   ["Urgency", lead.urgency?.replaceAll("_", " ") ?? "medium"],
                   ["Preferred unit", unitLabel(lead.preferredUnit)],
                   ["Preferred view", lead.preferredView ? `${unitLabel(lead.preferredView)} view` : "—"],
+                  ["Interested flat", inventoryTracking.flatNumber ?? "—"],
+                  ["Flat type", inventoryTracking.flatType ?? "—"],
+                  ["Inventory stage", inventoryTracking.clientStage],
+                  ["Deposit status", inventoryTracking.depositStatus],
+                  ["Instalment status", inventoryTracking.instalmentStatus],
                   ["Language", lead.language ?? "en"],
                   ["Created", created],
                   ["Last updated", updated],
@@ -336,6 +344,27 @@ async function LeadDetailContent({
                   </div>
                 ))}
               </div>
+            </section>
+
+            <section className="rounded-xl border border-light-grey bg-white shadow-card overflow-hidden">
+              <div className="p-6">
+                <h2 className="font-(--font-display) text-lg text-navy">Available inventory</h2>
+                <p className="mt-2 text-sm text-medium-grey max-w-2xl">
+                  Browse inventory here. Admins can select a flat from the table and assign a status for this lead.
+                </p>
+              </div>
+              <div className="px-6 pb-6">
+                <InventoryAssignModal
+                  leadId={lead.id}
+                  existingNotes={lead.notes ?? null}
+                  sessionRole={sessionRole}
+                />
+              </div>
+              <iframe
+                title="Arkadians Inventory (Available)"
+                src={`/inventory/index.html?scope=admin&select=1&leadId=${encodeURIComponent(lead.id)}`}
+                className="w-full min-h-[70vh]"
+              />
             </section>
 
             <section className="rounded-xl border border-light-grey bg-white shadow-card p-6">
@@ -427,8 +456,11 @@ async function LeadDetailContent({
               {[
                 ["Stage", progress.stage],
                 ["Payment status", progress.paymentStatus],
+                ["Inventory stage", inventoryTracking.clientStage],
                 ["Assigned advisor", lead.ownerLabel ?? "Unassigned"],
                 ["Estimated value", lead.budgetLabel],
+                ["Deposit status", inventoryTracking.depositStatus],
+                ["Instalment status", inventoryTracking.instalmentStatus],
               ].map(([k, v]) => (
                 <div key={k} className="rounded-lg border border-light-grey bg-cream/20 px-4 py-3">
                   <div className="text-xs tracking-widest uppercase text-medium-grey">{k}</div>

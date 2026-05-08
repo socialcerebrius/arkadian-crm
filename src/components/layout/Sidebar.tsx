@@ -26,10 +26,19 @@ const coreNavItems: NavItem[] = [
 
 export function Sidebar({ sessionUser }: { sessionUser: SessionUser | null }) {
   const pathname = usePathname();
-  const isAdmin = (sessionUser?.role ?? "").toLowerCase() === "admin";
+  const role = (sessionUser?.role ?? "").toLowerCase();
+  const isAdmin = role === "admin";
+  const isCeo = role === "ceo";
   const items = isAdmin
-    ? [{ href: "/admin", label: "Arkadians Command Centre" }, ...coreNavItems]
-    : coreNavItems;
+    ? [
+        { href: "/admin", label: "Arkadians Command Centre" },
+        { href: "/admin/users", label: "User Management" },
+        { href: "/inventory", label: "Inventory (Admin)" },
+        ...coreNavItems,
+      ]
+    : isCeo
+      ? [{ href: "/ceo", label: "CEO Profile" }, ...coreNavItems]
+      : coreNavItems;
   const personalCommandCentre: NavItem = { href: "/", label: "Command Centre" };
 
   return (

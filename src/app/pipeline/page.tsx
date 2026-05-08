@@ -42,9 +42,11 @@ async function getInitialPipelineLeads(): Promise<PipelineLead[]> {
 
 export default async function PipelinePage() {
   const session = await getSession();
-  const isAdmin = (session?.role ?? "").toLowerCase() === "admin";
+  const role = (session?.role ?? "").toLowerCase();
+  const isAdmin = role === "admin";
+  const isCeo = role === "ceo";
   // Sales users default to their own board for focus.
-  if (session && !isAdmin) {
+  if (session && !isAdmin && !isCeo) {
     redirect("/pipeline/my-board");
   }
   const initialLeads = await getInitialPipelineLeads();

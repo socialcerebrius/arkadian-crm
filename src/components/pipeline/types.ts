@@ -18,6 +18,11 @@ export type PipelineLead = {
   email?: string;
   unitLabel?: string;
   viewLabel?: string;
+  inventoryFlatNumber?: string;
+  inventoryFlatType?: string;
+  inventoryStage?: string;
+  depositStatus?: string;
+  instalmentStatus?: string;
   daysInStage: number;
   ownerId?: string;
   ownerLabel?: string;

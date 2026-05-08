@@ -85,6 +85,17 @@ export default async function LeadsPage() {
                     <div className="text-sm text-medium-grey">
                       {lead.budgetLabel}
                     </div>
+                    {lead.inventoryFlatNumber || lead.inventoryFlatType ? (
+                      <div className="mt-0.5 text-[11px] text-medium-grey/90">
+                        Flat: {lead.inventoryFlatNumber ?? "—"}
+                        {lead.inventoryFlatType ? ` · ${lead.inventoryFlatType}` : ""}
+                      </div>
+                    ) : null}
+                    {lead.depositStatus || lead.instalmentStatus ? (
+                      <div className="mt-0.5 text-[11px] text-medium-grey/90">
+                        Deposit: {lead.depositStatus ?? "Pending"} · Instalment: {lead.instalmentStatus ?? "Not started"}
+                      </div>
+                    ) : null}
                     {lead.lastCallAtLabel ? (
                       <div className="mt-0.5 text-[11px] text-medium-grey/90">
                         Last AI call: {lead.lastCallAtLabel}

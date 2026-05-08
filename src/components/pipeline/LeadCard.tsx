@@ -139,6 +139,21 @@ export function LeadCard({
           {lead.viewLabel ? <span>{lead.viewLabel} view</span> : null}
         </div>
 
+        {lead.inventoryFlatNumber || lead.inventoryFlatType ? (
+          <div className="mt-2 text-xs text-medium-grey">
+            <span className="font-semibold text-navy/80">Flat:</span>{" "}
+            {lead.inventoryFlatNumber ?? "—"}
+            {lead.inventoryFlatType ? ` · ${lead.inventoryFlatType}` : ""}
+          </div>
+        ) : null}
+        {lead.inventoryStage ? (
+          <div className="mt-1 text-xs text-medium-grey">
+            <span className="font-semibold text-navy/80">Inventory:</span> {lead.inventoryStage}
+            {lead.depositStatus ? ` · Deposit ${lead.depositStatus}` : ""}
+            {lead.instalmentStatus ? ` · Instalment ${lead.instalmentStatus}` : ""}
+          </div>
+        ) : null}
+
         <div className="mt-3 flex items-center justify-between text-xs text-medium-grey">
           <div>{lead.daysInStage} days in stage</div>
           <div className="flex items-center gap-1.5">

@@ -24,7 +24,11 @@ export function MobileNav({ sessionUser }: { sessionUser: SessionUser | null }) 
   const [open, setOpen] = useState(false);
   const isAdmin = (sessionUser?.role ?? "").toLowerCase() === "admin";
   const items = isAdmin
-    ? [{ href: "/admin", label: "Arkadians Command Centre" }, ...coreNavItems]
+    ? [
+        { href: "/admin", label: "Arkadians Command Centre" },
+        { href: "/inventory", label: "Inventory (Admin)" },
+        ...coreNavItems,
+      ]
     : coreNavItems;
 
   return (
